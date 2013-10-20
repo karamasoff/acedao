@@ -1,7 +1,7 @@
 AceDAO, a simple DAO with some queries and result formatting facilities
 =======================================================================
 
-[![Build Status](https://travis-ci.org/karamsoff/acedao.png)](https://travis-ci.org/karamsoff/acedao)
+[![Build Status](https://travis-ci.org/karamasoff/acedao.png?branch=master)](https://travis-ci.org/karamasoff/acedao)
 
 AceDAO is a query helper for PHP, released under the new BSD license (code
 and documentation).

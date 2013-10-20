@@ -1,2 +1,2 @@
 <?php
-require_once('Mock/Sinister.php');
+require_once('../../vendor/autoload.php');

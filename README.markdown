@@ -1,17 +1,15 @@
 AceDAO, a simple DAO with some queries and result formatting facilities
 =======================================================================
 
-[![Build Status](https://secure.travis-ci.org/fabpot/Twig.png?branch=master)](http://travis-ci.org/fabpot/Twig)
 
-Twig is a template language for PHP, released under the new BSD license (code
+AceDAO is a query helper for PHP, released under the new BSD license (code
 and documentation).
 
-Twig uses a syntax similar to the Django and Jinja template languages which
-inspired the Twig runtime environment.
+AceDAO provide some reusable system to query databases and is build on top of PDO.
 
 More Information
 ----------------
 
 Read the [documentation][1] for more information.
 
-[1]: http://twig.sensiolabs.org/documentation
+[1]: http://acedao.voilab.org/documentation

@@ -21,7 +21,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 
 		$container = new Container(array('mode' => 'strict'));
 
-		$sinister = $this->getMockBuilder('\Acedao\Test\Sinister')
+		$sinister = $this->getMockBuilder('\Acedao\Test\Mock\Sinister')
 			->getMock();
 		$sinister->expects($this->any())
 			->method('getDefaultFields')

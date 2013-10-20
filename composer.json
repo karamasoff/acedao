@@ -1,31 +1,31 @@
 {
-    "name": "twig/twig",
+    "name": "voilab/acedao",
     "type": "library",
-    "description": "Twig, the flexible, fast, and secure template language for PHP",
-    "keywords": ["templating"],
-    "homepage": "http://twig.sensiolabs.org",
+    "description": "AceDAO, a simple yet powerful query system",
+    "keywords": ["query","dao"],
+    "homepage": "http://acedao.voilab.org",
     "license": "BSD-3-Clause",
     "authors": [
         {
-            "name": "Fabien Potencier",
-            "email": "fabien@symfony.com"
-        },
-        {
-            "name": "Armin Ronacher",
-            "email": "armin.ronacher@active-4.com"
+            "name": "Joel Poulin",
+            "email": "joel@voilab.org"
         }
     ],
     "require": {
-        "php": ">=5.2.4"
+        "php": ">=5.3",
+        "pimple/pimple": "1.1.*@dev"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "3.7.*@dev"
     },
     "autoload": {
         "psr-0" : {
-            "Twig_" : "lib/"
+            "Acedao_" : "lib/"
         }
     },
     "extra": {
         "branch-alias": {
-            "dev-master": "1.13-dev"
+            "dev-master": "0.9-dev"
         }
     }
 }

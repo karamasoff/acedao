@@ -27,6 +27,10 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 			->method('getDefaultFields')
 			->will($this->returnValue(array('field1', 'field2')));
 
+		echo '<pre>';
+		print_r($sinister->getDefaultFields());
+		echo '</pre>';
+
 		$container['sinister'] = function() use ($sinister) {
 			return $sinister;
 		};

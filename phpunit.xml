@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit colors="true" bootstrap="./lib/Test/bootstrap.php">
+<phpunit colors="true" bootstrap="./lib/Acedao/Test/bootstrap.php">
     <testsuites>
         <testsuite name="AceDao Test Suite">
-            <directory>./lib/Test/</directory>
+            <directory>./lib/Acedao/Test/</directory>
         </testsuite>
     </testsuites>
 </phpunit>

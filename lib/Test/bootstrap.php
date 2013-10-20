@@ -1,10 +1,7 @@
 <?php
 namespace Acedao\Test;
 
-use Acedao\Container;
-use Acedao\Queriable;
-
-class Sinister implements Queriable {
+class Sinister implements \Acedao\Queriable {
 
 	/**
 	 * An array of field to select if nothing is provided in the query

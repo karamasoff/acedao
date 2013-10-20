@@ -2,16 +2,14 @@
 
 namespace Acedao;
 
-use \Pimple\Pimple;
-
 class Query {
 
 	/**
-	 * @var Pimple
+	 * @var Container
 	 */
 	private $container;
 
-	public function __construct(Pimple $c) {
+	public function __construct(Container $c) {
 		$this->container = $c;
 	}
 
@@ -41,7 +39,7 @@ class Query {
 	 * @return array
 	 */
 	public function getSelectedFields($config) {
-		$fields = isset($config['select']) ? $config['select'] : $this->container[$config['table'] . 'Dao']->getDefaultFields();
+		$fields = isset($config['select']) ? $config['select'] : $this->container[$config['table']]->getDefaultFields();
 		if (!in_array('id', $fields))
 			array_unshift($fields, 'id');
 
@@ -279,8 +277,8 @@ class Query {
 				$tablename = $data['base']['table'];
 			}
 
-		// si $filter_array est vide, c'est qu'on appelle un filtre sur la table
-		// de base de la requête.
+			// si $filter_array est vide, c'est qu'on appelle un filtre sur la table
+			// de base de la requête.
 		} else {
 			$tablename = $data['base']['table'];
 			$alias = $data['base']['alias'];
@@ -319,7 +317,7 @@ class Query {
 		list($filtername, $tablename, $alias) = $this->extractFilterAliasAndTable($data, $filtername);
 
 		// récupération du service
-		$service = $this->container[$tablename . 'Dao'];
+		$service = $this->container[$tablename];
 
 		// récupération du filtre
 		if (false === ($filter = $this->retrieveFilter($service, 'where', $filtername))) {
@@ -409,7 +407,7 @@ class Query {
 		list($filtername, $tablename, $alias) = $this->extractFilterAliasAndTable($data, $filtername);
 
 		// récupération du service
-		$service = $this->container[$tablename . 'Dao'];
+		$service = $this->container[$tablename];
 
 		// récupération du filtre
 		if (false === ($filter = $this->retrieveFilter($service, 'orderby', $filtername))) {
@@ -510,7 +508,7 @@ class Query {
 		foreach ($record as $fieldname => &$content) {
 			if (is_array($content)) {
 				$this->manageRelationsType($content, $fieldname);
-				$join_filter = $this->container[$base . 'Dao']->getFilters('join');
+				$join_filter = $this->container[$base]->getFilters('join');
 				if (isset($join_filter[$fieldname]['type']) && $join_filter[$fieldname]['type'] == 'many') {
 					$content = array($content);
 				}
@@ -541,8 +539,8 @@ class Query {
 		$local_alias = $caller['alias'];
 
 		// load DAO services
-		$basetable_dao = $this->container[$local_table . 'Dao'];
-		$jointable_dao = $this->container[$joined_table . 'Dao'];
+		$basetable_dao = $this->container[$local_table];
+		$jointable_dao = $this->container[$joined_table];
 
 		$basetable_joins = $basetable_dao->getFilters('join');
 		$jointable_joins = $jointable_dao->getFilters('join');
@@ -691,46 +689,46 @@ class Query {
 			return false;
 	}
 
-    final private function update($tableName, $data) {
+	final private function update($tableName, $data) {
 
-        $sqlStmt = "UPDATE `". $tableName ."` SET ";
+		$sqlStmt = "UPDATE `". $tableName ."` SET ";
 
-        $updates = array();
+		$updates = array();
 
-        foreach ($data as $key => $value) {
-            if ($key !== 'id') {
-                $updates[] = '`' .$key. '` = \'' . $value .'\'';
-            }
-        }
-        $sqlStmt .= implode(', ', $updates) . ' WHERE `id` = ' .$data['id'];
+		foreach ($data as $key => $value) {
+			if ($key !== 'id') {
+				$updates[] = '`' .$key. '` = \'' . $value .'\'';
+			}
+		}
+		$sqlStmt .= implode(', ', $updates) . ' WHERE `id` = ' .$data['id'];
 
-        return getDatabase()->execute($sqlStmt);
-    }
+		return getDatabase()->execute($sqlStmt);
+	}
 
-    final public function save($tableName, $data) {
-        if (array_key_exists('id', $data)) {
-            return $this->update($tableName, $data);
-        }
+	final public function save($tableName, $data) {
+		if (array_key_exists('id', $data)) {
+			return $this->update($tableName, $data);
+		}
 
-        $sqlStmt = "INSERT INTO `". $tableName ."` ";
+		$sqlStmt = "INSERT INTO `". $tableName ."` ";
 
-        $insertColumns = array();
-        $insertValues = array();
+		$insertColumns = array();
+		$insertValues = array();
 
-        foreach ($data as $key => $value) {
-            if ($key !== 'id') {
-                $insertColumns[] = '`' .$key. '`';
-                $insertValues[] = '\'' .$value. '\'';
-            }
-        }
+		foreach ($data as $key => $value) {
+			if ($key !== 'id') {
+				$insertColumns[] = '`' .$key. '`';
+				$insertValues[] = '\'' .$value. '\'';
+			}
+		}
 
-        $sqlStmt .= '(' . implode(', ', $insertColumns) . ') VALUES (' . implode(', ', $insertValues) . ')';
+		$sqlStmt .= '(' . implode(', ', $insertColumns) . ') VALUES (' . implode(', ', $insertValues) . ')';
 
-        return getDatabase()->execute($sqlStmt);
-    }
+		return getDatabase()->execute($sqlStmt);
+	}
 
-    final public function delete($tablename, $id) {
-        $sqlStmt = "DELETE FROM `" . $tablename . "` WHERE `id` = " .$id;
-        return getDatabase()->execute($sqlStmt);
-    }
+	final public function delete($tablename, $id) {
+		$sqlStmt = "DELETE FROM `" . $tablename . "` WHERE `id` = " .$id;
+		return getDatabase()->execute($sqlStmt);
+	}
 }

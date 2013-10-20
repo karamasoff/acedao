@@ -1,6 +1,6 @@
 <?php
 
-namespace acedao;
+namespace Acedao;
 
 
 interface Queriable {

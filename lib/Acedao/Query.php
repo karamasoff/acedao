@@ -9,6 +9,8 @@ class Query {
 	 */
 	private $container;
 
+	protected $aliasesReferences = array();
+
 	public function __construct(Container $c) {
 		$this->container = $c;
 	}
@@ -208,7 +210,7 @@ class Query {
 				if ($t[0] == $config['alias']) {
 					$record[$t[1]] = $value;
 				} else {
-					$path = $this->getPathAlias($aliases, $t[0]);
+					$path = $this->getPathAlias($t[0]);
 					$path_test = implode('_', $path);
 
 					// si y a pas d'id, on considère que c'est un join sur rien...
@@ -268,7 +270,7 @@ class Query {
 		if (count($filter_array) > 0) {
 			$alias = array_pop($filter_array);
 			if ($alias != $data['base']['alias']) {
-				$path = $this->getPathAlias($data['aliases'], $alias);
+				$path = $this->getPathAlias($alias);
 				if (!$path) {
 					throw new Exception(sprintf("Alias [%s] does not exist. Can't go on.", $alias));
 				}
@@ -486,15 +488,32 @@ class Query {
 	 */
 	public function fusionRecords(&$one, $two) {
 		foreach ($one as $fieldname => &$content) {
-			if (!is_array($content)) continue;
-			$newtwo = $two[$fieldname];
 
-			if (!isset($content['id'])) {
-				$content = array_merge($content, $newtwo);
-				return;
+			if ($content != $two[$fieldname] && is_array($content) && !isset($content['id'])) {
+				// combien y en a là-dedans ? Plus d'un ? Dans ce cas, faut trouver lequel
+				// ressemble le plus à notre $two[$fieldname]...
+				if (count($content) > 1) {
+					$found = false;
+					foreach ($content as &$test_record) {
+						if ($test_record['id'] != $two[$fieldname][0]['id']) {
+							continue;
+						}
+
+						$found = true;
+						foreach ($test_record as $test_fieldname => &$test_content) {
+							if (is_array($test_content)) {
+								$this->fusionRecords($test_content, $two[$fieldname][0][$test_fieldname]);
+							}
+						}
+					}
+
+					if (!$found) {
+						$content[] = $two[$fieldname][0];
+					}
+				} else {
+					$content = array_merge($content, $two[$fieldname]);
+				}
 			}
-
-			$this->fusionRecords($content, $newtwo);
 		}
 	}
 
@@ -506,6 +525,8 @@ class Query {
 	 */
 	public function manageRelationsType(&$record, $base) {
 		foreach ($record as $fieldname => &$content) {
+
+			// si $content est un tableau, alors on est dans une relation et $fieldname est un nom de table
 			if (is_array($content)) {
 				$this->manageRelationsType($content, $fieldname);
 				$join_filter = $this->container[$base]->getFilters('join');
@@ -629,18 +650,27 @@ class Query {
 			return false;
 		}
 
-		if (isset($reference[$localAlias])) {
-			$reference[$localAlias]['children'][$joinedAlias] = array(
+		// on essaie déjà de trouver l'alias local dans l'arbre existant d'alias.
+		// si on ne le trouve pas, on va créer cet alias au premier niveau de l'arbre des alias.
+		if (!$this->getPathAlias($localAlias)) {
+			$reference[$joinedAlias] = array(
+				'table' => $joinedTable,
+				'type' => isset($localTableFilters[$joinedTable]['type']) ? $localTableFilters[$joinedTable]['type'] : 'one',
+				'children' => array(),
+				'parent' => null
+			);
+
+			// stockage d'une référence vers le nouvel alias
+			$this->aliasesReferences[$joinedAlias] = &$reference[$joinedAlias];
+
+			// si on le trouve, on met à jour l'arbre comme il se doit.
+		} else {
+			$child = array(
 				'table' => $joinedTable,
 				'type' => isset($joinedTableFilters[$joinedTable]['type']) ? $joinedTableFilters[$joinedTable]['type'] : 'one',
 				'children' => array()
 			);
-		} else {
-			$reference[$joinedAlias] = array(
-				'table' => $joinedTable,
-				'type' => isset($localTableFilters[$joinedTable]['type']) ? $localTableFilters[$joinedTable]['type'] : 'one',
-				'children' => array()
-			);
+			$this->aliasesTreeAddChild($reference, $localAlias, $joinedAlias, $child);
 		}
 
 		return true;
@@ -658,6 +688,34 @@ class Query {
 	}
 
 	/**
+	 * Ajout d'un élément dans l'arbre des alias
+	 *
+	 * @param $reference L'arbre des alias, passé en référence
+	 * @param $alias L'alias dans lequel on veut ajouter un élément
+	 * @param $childAlias L'alias de l'élément à ajouter
+	 * @param $child L'élément à ajouter
+	 * @return bool
+	 */
+	public function aliasesTreeAddChild(&$reference, $alias, $childAlias, $child) {
+		if (isset($reference[$alias])) {
+			$child['parent'] = &$reference[$alias];
+			$reference[$alias]['children'][$childAlias] = $child;
+
+			// stockage d'une référence vers le nouvel alias
+			$this->aliasesReferences[$childAlias] = &$reference[$alias]['children'][$childAlias];
+			return true;
+		}
+
+		foreach ($reference as &$ref) {
+			if (false !== ($result = $this->aliasesTreeAddChild($ref['children'], $alias, $childAlias, $child))) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Récupération du path vers un alias
 	 *
 	 * @param array $reference La bibliothèque des alias de la query (ou un sous-ensemble)
@@ -665,28 +723,22 @@ class Query {
 	 * @param bool $found Est-ce qu'on a trouvé l'alias
 	 * @return array|false
 	 */
-	public function getPathAlias($reference, $alias, &$found = false) {
-		$path = array();
-		if (!isset($reference[$alias])) {
-			foreach ($reference as $alias_name => $ref) {
-				if ($alias == $alias_name)
-					$found = true;
-				if (count($ref['children']) > 0) {
-					$path[] = $ref['table'];
-					$subpath = $this->getPathAlias($ref['children'], $alias, $found);
-					if (is_array($subpath))
-						$path = array_merge($path, $subpath);
-				}
-			}
-		} else {
-			$path[] = $reference[$alias]['table'];
-			$found = true;
+	public function getPathAlias($alias) {
+
+		if (!isset($this->aliasesReferences[$alias])) {
+			return false;
 		}
 
-		if ($found)
-			return $path;
-		else
-			return false;
+		return $this->get($this->aliasesReferences[$alias]);
+	}
+
+	public function get($part, $result = array()) {
+		if ($part === null) {
+			return $result;
+		}
+
+		array_unshift($result, $part['table']);
+		return $this->get($part['parent'], $result);
 	}
 
 	final private function update($tableName, $data) {

@@ -36,11 +36,12 @@ class Database {
 
 	/**
 	 * Private constructor
+	 *
 	 * @param array $config
 	 * @throws Exception
 	 */
 	private function __construct($config = array()) {
-		$this->config = array_merge($config, $this->config);
+		$this->config = array_merge($this->config, $config);
 		if (!$this->config['adapter'] || !$this->config['host'] || !$this->config['dbname'] || !$this->config['user']) {
 			throw new Exception("Missing config parameters");
 		}
@@ -69,7 +70,7 @@ class Database {
 				return $this->dbh->lastInsertId();
 			else
 				return $sth->rowCount();
-		} catch (PDOException $e) {
+		} catch (\PDOException $e) {
 			throw new Exception("Query error: {$e->getMessage()} - {$sql}");
 			return false;
 		}
@@ -88,8 +89,8 @@ class Database {
 		$this->init();
 		try {
 			$sth = $this->prepare($sql, $params);
-			return $sth->fetchAll(PDO::FETCH_ASSOC);
-		} catch (PDOException $e) {
+			return $sth->fetchAll(\PDO::FETCH_ASSOC);
+		} catch (\PDOException $e) {
 			throw new Exception("Query error: {$e->getMessage()} - {$sql}");
 			return false;
 		}
@@ -99,8 +100,19 @@ class Database {
 		$this->init();
 		try {
 			$sth = $this->prepare($sql, $params);
-			return $sth->fetch(PDO::FETCH_ASSOC);
-		} catch (PDOException $e) {
+			return $sth->fetch(\PDO::FETCH_ASSOC);
+		} catch (\PDOException $e) {
+			throw new Exception("Query error: {$e->getMessage()} - {$sql}");
+			return false;
+		}
+	}
+
+	private function prepare($sql, $params = array()) {
+		try {
+			$sth = $this->dblol->prepare($sql, array(\PDO::ATTR_CURSOR => \PDO::CURSOR_FWDONLY));
+			$sth->execute($params);
+			return $sth;
+		} catch (\PDOException $e) {
 			throw new Exception("Query error: {$e->getMessage()} - {$sql}");
 			return false;
 		}
@@ -111,8 +123,8 @@ class Database {
 			return;
 
 		try {
-			$this->dblol = new PDO($this->config['adapter'] . ':host=' . $this->config['host'] . ';dbname=' . $this->config['dbname'], $this->config['user'], $this->config['pass']);
-			$this->dblol->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+			$this->dblol = new \PDO($this->config['adapter'] . ':host=' . $this->config['host'] . ';dbname=' . $this->config['dbname'], $this->config['user'], $this->config['pass']);
+			$this->dblol->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 		} catch (Exception $e) {
 			throw new Exception('Could not connect to database');
 		}

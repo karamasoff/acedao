@@ -181,7 +181,7 @@ class Query {
 //		echo '</pre>';
 
 		// récupération des résultats
-		$results = getDatabase()->all($sql, $params);
+		$results = Database::getInstance()->all($sql, $params);
 
 		// regroupement des résultats
 		$formatted = $this->hydrate($results, $config, $data['aliases']);
@@ -702,7 +702,7 @@ class Query {
 		}
 		$sqlStmt .= implode(', ', $updates) . ' WHERE `id` = ' .$data['id'];
 
-		return getDatabase()->execute($sqlStmt);
+		return Database::getInstance()->execute($sqlStmt);
 	}
 
 	final public function save($tableName, $data) {
@@ -724,11 +724,11 @@ class Query {
 
 		$sqlStmt .= '(' . implode(', ', $insertColumns) . ') VALUES (' . implode(', ', $insertValues) . ')';
 
-		return getDatabase()->execute($sqlStmt);
+		return Database::getInstance()->execute($sqlStmt);
 	}
 
 	final public function delete($tablename, $id) {
 		$sqlStmt = "DELETE FROM `" . $tablename . "` WHERE `id` = " .$id;
-		return getDatabase()->execute($sqlStmt);
+		return Database::getInstance()->execute($sqlStmt);
 	}
 }

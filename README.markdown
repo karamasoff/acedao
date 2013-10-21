@@ -1,10 +1,15 @@
 AceDAO
 ========================================
-#### querying your database DRYly
+#### querying your database DRYly [![Build Status](https://travis-ci.org/karamasoff/acedao.png?branch=master)](https://travis-ci.org/karamasoff/acedao)
 
 ----------------------------------------
 
-[![Build Status](https://travis-ci.org/karamasoff/acedao.png?branch=master)](https://travis-ci.org/karamasoff/acedao)
+AceDAO is a query helper for PHP, released under the new BSD license (code
+and documentation).
+
+**CAUTION: This package is still not documented and in early development state...**
+
+----------------------------------------
 
 ### So what ?
 
@@ -32,7 +37,7 @@ AceDAO provide some reusable system to query databases and is build on top of PD
 	$results = \Acedao\Database::getInstance()->select($config);
 
 The results will be automatically formatted according to the database implicit schema.
-You get the cars with the buyer information, you'll get something like:
+You want the cars with the buyer information, you'll get something like this:
 
 	<pre>Array
     (
@@ -68,16 +73,24 @@ You get the cars with the buyer information, you'll get something like:
         )
      </pre>
 
+----------------------------------------
 
-AceDAO is a query helper for PHP, released under the new BSD license (code
-and documentation).
+### How can I get it work ?
 
-**CAUTION: This package is still not documented and in early development state...**
+Read documentation on the different steps to party with it.
+
+1. [Queriable classes][queriable] - First you need to define on which table you want to run queries
+2. [Dependancy injection][di] - AceDAO provide a simple yet powerful dependancy injection based on [Pimple][1].
+3. [Query configuration][query] - Well, I've my Queriable class, registered in my DI Container. I want to query !!
+4. [Bootstrapping][bootstrap] - Ok, and howto bootstrap all that stuffs ?
+
+----------------------------------------
+
 
 More Information
 ----------------
 
-Read the [documentation][1] for more information (soon).
+All is here :)
 
-[1]: http://acedao.voilab.org/documentation
+[1]: http://pimple.sensiolabs.org/
 

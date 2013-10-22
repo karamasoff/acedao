@@ -10,9 +10,26 @@ class Query {
 	private $container;
 
 	protected $aliasesReferences = array();
+	protected $aliasesTree = array();
 
 	public function __construct(Container $c) {
 		$this->container = $c;
+	}
+
+	public function setAliasesReferences($refs) {
+		$this->aliasesReferences = $refs;
+	}
+
+	public function setAliasesTree($tree) {
+		$this->aliasesTree = $tree;
+	}
+
+	public function getAliasesTree() {
+		return $this->aliasesTree;
+	}
+
+	public function getAliasesReferences() {
+		return $this->aliasesReferences;
 	}
 
 	/**
@@ -116,7 +133,6 @@ class Query {
 
 		// initialisation du tableau de données de la query
 		$data = array(
-			'aliases' => array(),
 			'flataliases' => array($config['table'] => $config['alias']),
 			'base' => array(
 				'table' => $config['table'],
@@ -186,7 +202,7 @@ class Query {
 		$results = Database::getInstance()->all($sql, $params);
 
 		// regroupement des résultats
-		$formatted = $this->hydrate($results, $config, $data['aliases']);
+		$formatted = $this->hydrate($results, $config);
 
 		return $formatted;
 	}
@@ -196,10 +212,9 @@ class Query {
 	 *
 	 * @param array $results Resultset PDO
 	 * @param array $config Configuration de la requête
-	 * @param array $aliases Résumé des alias
 	 * @return array
 	 */
-	public function hydrate($results, $config, $aliases) {
+	public function hydrate($results, $config) {
 		$formatted = array();
 		foreach ($results as $line) {
 			$record = array();
@@ -432,7 +447,7 @@ class Query {
 				if (isset($options['map']) && isset($options['map'][$tablename])) {
 					$alias = $options['map'][$tablename];
 				} else {
-					throw new Exception(sprintf("The table [%s] as several aliases [%s]. You have to map the good one in the query call configuration.", $tablename, implode(',     ', $aliases)));
+					throw new Exception(sprintf("The table [%s] as several aliases [%s]. You have to map the good one in the query call configuration.", $tablename, implode(', ', $aliases)));
 				}
 			} else {
 				$alias = $aliases[0];
@@ -609,7 +624,7 @@ class Query {
 			$data['parts']['select'][] = $joined_alias . '.id';
 
 			// handle aliases libraries
-			$this->registerAlias($data['aliases'], $local_alias, $joined_alias, $joined_table, $basetable_joins, $jointable_joins);
+			$this->registerAlias($local_alias, $joined_alias, $joined_table, $basetable_joins, $jointable_joins);
 			$this->addFlatAlias($data['flataliases'], $joined_table, $joined_alias);
 		}
 
@@ -637,7 +652,6 @@ class Query {
 	/**
 	 * Référencement d'un alias dans la bibliothèque d'alias de la query
 	 *
-	 * @param array $reference La bibliothèque d'alias, ou un sous-ensemble de celle-ci
 	 * @param string $localAlias L'alias parent
 	 * @param string $joinedAlias L'alias recherché
 	 * @param string $joinedTable Le nom de la table à aliaser
@@ -645,7 +659,7 @@ class Query {
 	 * @param array $joinedTableFilters Les filtres 'join' de la table jointe
 	 * @return bool
 	 */
-	public function registerAlias(&$reference, $localAlias, $joinedAlias, $joinedTable, $localTableFilters, $joinedTableFilters) {
+	public function registerAlias($localAlias, $joinedAlias, $joinedTable, $localTableFilters, $joinedTableFilters) {
 		if (!isset($localTableFilters[$joinedTable])) {
 			return false;
 		}
@@ -653,7 +667,7 @@ class Query {
 		// on essaie déjà de trouver l'alias local dans l'arbre existant d'alias.
 		// si on ne le trouve pas, on va créer cet alias au premier niveau de l'arbre des alias.
 		if (!$this->getPathAlias($localAlias)) {
-			$reference[$joinedAlias] = array(
+			$this->aliasesTree[$joinedAlias] = array(
 				'table' => $joinedTable,
 				'type' => isset($localTableFilters[$joinedTable]['type']) ? $localTableFilters[$joinedTable]['type'] : 'one',
 				'children' => array(),
@@ -661,7 +675,7 @@ class Query {
 			);
 
 			// stockage d'une référence vers le nouvel alias
-			$this->aliasesReferences[$joinedAlias] = &$reference[$joinedAlias];
+			$this->aliasesReferences[$joinedAlias] = &$this->aliasesTree[$joinedAlias];
 
 			// si on le trouve, on met à jour l'arbre comme il se doit.
 		} else {
@@ -670,7 +684,7 @@ class Query {
 				'type' => isset($joinedTableFilters[$joinedTable]['type']) ? $joinedTableFilters[$joinedTable]['type'] : 'one',
 				'children' => array()
 			);
-			$this->aliasesTreeAddChild($reference, $localAlias, $joinedAlias, $child);
+			$this->aliasesTreeAddChild($this->aliasesTree, $localAlias, $joinedAlias, $child);
 		}
 
 		return true;
@@ -690,10 +704,10 @@ class Query {
 	/**
 	 * Ajout d'un élément dans l'arbre des alias
 	 *
-	 * @param $reference L'arbre des alias, passé en référence
-	 * @param $alias L'alias dans lequel on veut ajouter un élément
-	 * @param $childAlias L'alias de l'élément à ajouter
-	 * @param $child L'élément à ajouter
+	 * @param $reference array L'arbre des alias, passé en référence
+	 * @param $alias string L'alias dans lequel on veut ajouter un élément
+	 * @param $childAlias string L'alias de l'élément à ajouter
+	 * @param $child array L'élément à ajouter
 	 * @return bool
 	 */
 	public function aliasesTreeAddChild(&$reference, $alias, $childAlias, $child) {
@@ -718,9 +732,7 @@ class Query {
 	/**
 	 * Récupération du path vers un alias
 	 *
-	 * @param array $reference La bibliothèque des alias de la query (ou un sous-ensemble)
 	 * @param string $alias L'alias à trouver
-	 * @param bool $found Est-ce qu'on a trouvé l'alias
 	 * @return array|false
 	 */
 	public function getPathAlias($alias) {

@@ -13,7 +13,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 	public $container;
 
 	/**
-	 * @var Query
+	 * @var \Acedao\Query
 	 */
 	public $query;
 
@@ -33,6 +33,8 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 
 		$this->container = $container;
 		$this->query = $this->container['query'];
+
+		$this->initAliasesBaseForSearch();
 	}
 
 	/**
@@ -135,8 +137,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 	 * @dataProvider providerGetPathAlias
 	 */
 	public function testGetPathAlias($alias, $expected) {
-		$reference = $this->getAliasesBaseForSearch();
-		$result = $this->query->getPathAlias($reference, $alias);
+		$result = $this->query->getPathAlias($alias);
 
 		$this->assertEquals($expected, $result);
 	}
@@ -151,7 +152,8 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 	}
 
 	/**
-	 * @param $base
+	 * @param $baseTree
+	 * @param $baseRefs
 	 * @param $parentAlias
 	 * @param $alias
 	 * @param $table
@@ -161,11 +163,48 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 	 *
 	 * @dataProvider providerRegisterAlias
 	 */
-	public function testRegisterAlias($base, $parentAlias, $alias, $table, $localJoins, $joinedJoins, $expected) {
+	public function testRegisterAlias($baseTree, $baseRefs, $parentAlias, $alias, $table, $localJoins, $joinedJoins, $expected) {
 
-		$this->query->registerAlias($base, $parentAlias, $alias, $table, $localJoins, $joinedJoins);
+		$this->query->setAliasesTree($baseTree);
+		$this->query->setAliasesReferences($baseRefs);
+		$this->query->registerAlias($parentAlias, $alias, $table, $localJoins, $joinedJoins);
 
-		$this->assertEquals($expected, $base);
+		$this->assertEquals($expected, $this->query->getAliasesTree());
+	}
+
+	public function testRegisterAliasSecondLevel() {
+		list($baseTree, $baseRefs) = $this->getSinisterAliasesBaseForRegister();
+		$this->query->setAliasesTree($baseTree);
+		$this->query->setAliasesReferences($baseRefs);
+
+		$employee_joins = array(
+			'person' => array(
+				'select' => array('firstname', 'name'),
+				'on' => array(
+					'[person].id = [employee].person_id'
+				)
+			),
+			'client' => array(
+				'on' => array(
+					'[client].id = [employee].client_id'
+				)
+			)
+		);
+
+		$person_joins = array();
+
+		$result_person = $baseTree;
+		$result_person['e']['children']['p'] = array(
+			'table' => 'person',
+			'type' => 'one',
+			'children' => array()
+		);
+
+		$this->query->registerAlias('e', 'p', 'person', $employee_joins, $person_joins);
+
+		$result = $this->query->getAliasesTree();
+		unset($result['e']['children']['p']['parent']); // obligé de virer ce champ car sinon PHPUnit n'arrive pas à comparer car trop de récursion
+		$this->assertEquals($result, $result_person);
 	}
 
 	public function providerRegisterAlias() {
@@ -207,91 +246,96 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 			)
 		);
 
-		$person_joins = array();
 		$sinister_note_joins = array();
 
-		$base_sinister = $this->getSinisterAliasesBaseForRegister();
-		$base_employee = $this->getEmployeeAliasesBaseForRegister();
+		list($base_sinister_tree, $base_sinister_refs) = $this->getSinisterAliasesBaseForRegister();
 
-		$result_sinister_note = $base_sinister;
+		$result_sinister_note = $base_sinister_tree;
 		$result_sinister_note['n'] = array(
 			'table' => 'sinister_note',
 			'type' => 'many',
-			'children' => array()
+			'children' => array(),
+			'parent' => null
 		);
 
-		$result_person = $base_sinister;
-		$result_person['e']['children']['p'] = array(
+		return array(
+			array($base_sinister_tree, $base_sinister_refs, 's', 'e', 'employee', $sinister_joins, $employee_joins, $base_sinister_tree), // alias existe déjà
+			array($base_sinister_tree, $base_sinister_refs, 's', 'n', 'sinister_note', $sinister_joins, $sinister_note_joins, $result_sinister_note), // ajout d'un alias
+			array($base_sinister_tree, $base_sinister_refs, 's', 'y', 'dummy_tabley', $sinister_joins, array(), $base_sinister_tree), // ajout d'un alias non référencé
+			array($base_sinister_tree, $base_sinister_refs, 'e', 'z', 'dummy_table', $employee_joins, array(), $base_sinister_tree) // alias non référencé, autre source
+		);
+	}
+
+	private function initAliasesBaseForSearch() {
+		$c = array(
+			'table' => 'client',
+			'type' => 'one',
+			'children' => array()
+		);
+		$p = array(
 			'table' => 'person',
 			'type' => 'one',
 			'children' => array()
 		);
-
-		return array(
-			array($base_sinister, 's', 'e', 'employee', $sinister_joins, $employee_joins, $base_sinister), // alias existe déjà
-			array($base_sinister, 's', 'n', 'sinister_note', $sinister_joins, $sinister_note_joins, $result_sinister_note), // ajout d'un alias
-			array($base_sinister, 's', 'y', 'dummy_tabley', $sinister_joins, array(), $base_sinister), // ajout d'un alias non référencé
-			array($base_sinister, 'e', 'p', 'person', $employee_joins, $person_joins, $result_person), // ajout d'un alias au niveau d'en-dessous
-			array($base_sinister, 'e', 'z', 'dummy_table', $employee_joins, array(), $base_sinister) // alias non référencé, autre source
-		);
-	}
-
-	private function getAliasesBaseForSearch() {
-		return array(
-			'e' => array(
-				'table' => 'employee',
-				'type' => 'one',
-				'children' => array(
-					'c' => array(
-						'table' => 'client',
-						'type' => 'one',
-						'children' => array()
-					),
-					'p' => array(
-						'table' => 'person',
-						'type' => 'one',
-						'children' => array()
-					)
-				)
-			),
-			'ss' => array(
-				'table' => 'sinister_status',
-				'type' => 'one',
-				'children' => array()
+		$e = array(
+			'table' => 'employee',
+			'type' => 'one',
+			'children' => array(
+				'c' => &$c,
+				'p' => &$p
 			)
 		);
+		$c['parent'] = &$e;
+		$p['parent'] = &$e;
+
+		$ss = array(
+			'table' => 'sinister_status',
+			'type' => 'one',
+			'children' => array()
+		);
+		$e['parent'] = null;
+		$ss['parent'] = null;
+
+		$base = array(
+			'e' => &$e,
+			'ss' => &$ss
+		);
+		$reference = array(
+			'c' => &$c,
+			'p' => &$p,
+			'e' => &$e,
+			'ss' => &$ss
+		);
+
+		$this->query->setAliasesTree($base);
+		$this->query->setAliasesReferences($reference);
 	}
 
 	private function getSinisterAliasesBaseForRegister() {
-		return array(
-			'e' => array(
-				'table' => 'employee',
-				'type' => 'one',
-				'children' => array()
-			),
-			'ss' => array(
-				'table' => 'sinister_status',
-				'type' => 'one',
-				'children' => array()
-			)
+		$e = array(
+			'table' => 'employee',
+			'type' => 'one',
+			'children' => array(),
+			'parent' => null
 		);
-	}
-
-	private function getEmployeeAliasesBaseForRegister() {
-		return array(
-			'c' => array(
-				'table' => 'client',
-				'type' => 'one',
-				'children' => array()
-			),
-			'p' => array(
-				'table' => 'person',
-				'type' => 'one',
-				'children' => array()
-			)
+		$ss = array(
+			'table' => 'sinister_status',
+			'type' => 'one',
+			'children' => array(),
+			'parent' => null
 		);
-	}
+		$base = array(
+			'e' => &$e,
+			'ss' => &$ss
+		);
 
+		$ref = array(
+			'e' => &$e,
+			'ss' => &$ss
+		);
+
+		return array($base, $ref);
+	}
 
 	/**
 	 * @param $sql

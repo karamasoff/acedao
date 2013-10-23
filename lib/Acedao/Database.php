@@ -5,6 +5,10 @@ namespace Acedao;
 class Database {
 
 	private static $instance = null;
+
+	/**
+	 * @var \PDO
+	 */
 	public $dblol = null;
 	private $config = array(
 		'adapter' => 'mysql',
@@ -14,52 +18,18 @@ class Database {
 		'pass' => ''
 	);
 
-	/**
-	 * @return Database
-	 */
-	public static function getInstance() {
-		if (self::$instance === null) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
-	}
 
 	/**
-	 * @param array $config Database initialisation info
-	 * @return Database
-	 */
-	private static function newInstance(array $config) {
-		self::$instance = new self($config);
-		return true;
-	}
-
-	/**
-	 * Private constructor
+	 * Constructor
 	 *
 	 * @param array $config
 	 * @throws Exception
 	 */
-	private function __construct($config = array()) {
+	public function __construct($config = array()) {
 		$this->config = array_merge($this->config, $config);
 		if (!$this->config['adapter'] || !$this->config['host'] || !$this->config['dbname'] || !$this->config['user']) {
 			throw new Exception("Missing config parameters");
 		}
-	}
-
-	/**
-	 * Initialise database configuration
-	 *
-	 * @param array $config Database initialisation info
-	 * @return bool
-	 * @throws Exception
-	 */
-	public static function load(array $config) {
-		if (self::newInstance($config)) {
-			return true;
-		}
-
-		throw new Exception("Can't initialize database");
 	}
 
 	public function execute($sql = false, $params = array()) {
@@ -105,6 +75,18 @@ class Database {
 			throw new Exception("Query error: {$e->getMessage()} - {$sql}");
 			return false;
 		}
+	}
+
+	public function beginTransaction() {
+		$this->dblol->beginTransaction();
+	}
+
+	public function commit() {
+		$this->dblol->commit();
+	}
+
+	public function rollback() {
+		$this->dblol->rollBack();
 	}
 
 	private function prepare($sql, $params = array()) {

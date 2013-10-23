@@ -199,7 +199,7 @@ class Query {
 //		echo '</pre>';
 
 		// récupération des résultats
-		$results = Database::getInstance()->all($sql, $params);
+		$results = $this->container['db']->all($sql, $params);
 
 		// regroupement des résultats
 		$formatted = $this->hydrate($results, $config);
@@ -771,7 +771,7 @@ class Query {
 		}
 		$sqlStmt .= '(`' . implode('`,`', array_keys($data)) . '`) VALUES (' . implode(',', array_keys($user_data)) . ')';
 
-		return Database::getInstance()->execute($sqlStmt, $user_data);
+		return $this->container['db']->execute($sqlStmt, $user_data);
 	}
 
 	/**
@@ -796,7 +796,7 @@ class Query {
 		}
 		$sqlStmt .= implode(', ', $updates) . ' WHERE `id` = :id';
 
-		return Database::getInstance()->execute($sqlStmt, $user_data);
+		return $this->container['db']->execute($sqlStmt, $user_data);
 	}
 
 	final public function save($tableName, $data) {
@@ -810,6 +810,6 @@ class Query {
 
 	final public function delete($tablename, $id) {
 		$sqlStmt = "DELETE FROM `" . $tablename . "` WHERE `id` = :id";
-		return Database::getInstance()->execute($sqlStmt, array(':id' => $id));
+		return $this->container['db']->execute($sqlStmt, array(':id' => $id));
 	}
 }

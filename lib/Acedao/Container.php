@@ -12,6 +12,10 @@ class Container extends \Pimple {
 			'mode' => 'production' // if "production": limit some errors, if "strict": raise more exceptions and is more verbose
 		));
 
+		$this['db'] = $this->share(function($c) {
+			return new Database($c['config']['db']);
+		});
+
 		$this['query'] = $this->share(function($c) {
 			return new Query($c);
 		});

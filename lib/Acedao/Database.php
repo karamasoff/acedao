@@ -67,7 +67,7 @@ class Database {
 		try {
 			$sth = $this->prepare($sql, $params);
 			if (preg_match('/insert/i', $sql))
-				return $this->dbh->lastInsertId();
+				return $this->dblol->lastInsertId();
 			else
 				return $sth->rowCount();
 		} catch (\PDOException $e) {
@@ -78,7 +78,7 @@ class Database {
 
 	public function insertId() {
 		$this->init();
-		$id = $this->dbh->lastInsertId();
+		$id = $this->dblol->lastInsertId();
 		if ($id > 0) {
 			return $id;
 		}

@@ -753,46 +753,63 @@ class Query {
 		return $this->get($part['parent'], $result);
 	}
 
+	/**
+	 * Prépare and run an SQL query to insert a record
+	 *
+	 * @param string $tableName
+	 * @param array $data
+	 * @return int
+	 */
+	final private function insert($tableName, $data) {
+
+		$sqlStmt = "INSERT INTO `". $tableName ."` ";
+
+		$user_data = array();
+		foreach ($data as $key => $value) {
+			$pdo_key = ':' . $key;
+			$user_data[$pdo_key] = $value;
+		}
+		$sqlStmt .= '(`' . implode('`,`', array_keys($data)) . '`) VALUES (' . implode(',', array_keys($user_data)) . ')';
+
+		return Database::getInstance()->execute($sqlStmt, $user_data);
+	}
+
+	/**
+	 * Prépare and run an SQL query to update a record
+	 *
+	 * @param string $tableName
+	 * @param array $data
+	 * @return int
+	 */
 	final private function update($tableName, $data) {
 
 		$sqlStmt = "UPDATE `". $tableName ."` SET ";
 
 		$updates = array();
-
+		$user_data = array();
 		foreach ($data as $key => $value) {
+			$pdo_key = ':' . $key;
+			$user_data[$pdo_key] = $value;
 			if ($key !== 'id') {
-				$updates[] = '`' .$key. '` = \'' . $value .'\'';
+				$updates[] = '`' . $key . '` = ' . $pdo_key;
 			}
 		}
-		$sqlStmt .= implode(', ', $updates) . ' WHERE `id` = ' .$data['id'];
+		$sqlStmt .= implode(', ', $updates) . ' WHERE `id` = :id';
 
-		return Database::getInstance()->execute($sqlStmt);
+		return Database::getInstance()->execute($sqlStmt, $user_data);
 	}
 
 	final public function save($tableName, $data) {
 		if (array_key_exists('id', $data)) {
 			return $this->update($tableName, $data);
+		} else {
+			return $this->insert($tableName, $data);
 		}
-
-		$sqlStmt = "INSERT INTO `". $tableName ."` ";
-
-		$insertColumns = array();
-		$insertValues = array();
-
-		foreach ($data as $key => $value) {
-			if ($key !== 'id') {
-				$insertColumns[] = '`' .$key. '`';
-				$insertValues[] = '\'' .$value. '\'';
-			}
-		}
-
-		$sqlStmt .= '(' . implode(', ', $insertColumns) . ') VALUES (' . implode(', ', $insertValues) . ')';
-
-		return Database::getInstance()->execute($sqlStmt);
 	}
 
+
 	final public function delete($tablename, $id) {
-		$sqlStmt = "DELETE FROM `" . $tablename . "` WHERE `id` = " .$id;
-		return Database::getInstance()->execute($sqlStmt);
+		$sqlStmt = "DELETE FROM `" . $tablename . "` WHERE `id` = :id";
+		return Database::getInstance()->execute($sqlStmt, array(':id' => $id));
 	}
 }

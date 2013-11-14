@@ -30,19 +30,28 @@ trait Validator {
 	 * @param array $userProvidedData
 	 * @return bool
 	 */
-	public function validate(array $userProvidedData) {
-		$results = array(
-			'success' => true
-		);
+	public function validate(array $userProvidedData, $allowUnknown = false) {
+        $results = array(
+            'success' => true,
+            'data' => $userProvidedData
+        );
 
         // allowed fields
-        $allowed_fields = $this->getAllowedFields();
-        if (count($allowed_fields) > 0) {
-            $diff = array_diff(array_keys($userProvidedData), $allowed_fields);
-            if (count($diff) > 0) {
-                $results['success'] = false;
-                $results['message'][] = "Unknown fields.";
-                $results['featuring'] = $diff;
+        if (!$allowUnknown) {
+            $allowed_fields = $this->getAllowedFields();
+            if (count($allowed_fields) > 0) {
+                $diff = array_diff(array_keys($userProvidedData), $allowed_fields);
+                if (count($diff) > 0) {
+                    $results['success'] = false;
+                    $results['message'][] = "Unknown fields.";
+                    $results['featuring'] = $diff;
+                }
+            }
+        } else {
+            // Filter only allowed fields
+            $diff = array_diff(array_keys($userProvidedData), $this->getAllowedFields());
+            foreach($diff as $key) {
+                unset($results['data'][$key]);
             }
         }
 

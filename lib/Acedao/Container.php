@@ -16,8 +16,8 @@ class Container extends \Pimple {
 			return new Database($c['config']['db']);
 		});
 
-		$this['query'] = $this->share(function($c) {
+		$this['query'] = function($c) {
 			return new Query($c);
-		});
+		};
 	}
 }

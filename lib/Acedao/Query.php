@@ -204,8 +204,6 @@ class Query {
 		// regroupement des résultats
 		$formatted = $this->hydrate($results, $config);
 
-        unset($this->aliasesReferences);
-
 		return $formatted;
 	}
 

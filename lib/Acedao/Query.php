@@ -437,24 +437,24 @@ class Query {
 		// remplacement des alias sur les clause order by
 		$table_names = array();
 		$aliases_name = array();
-		foreach ($data['flataliases'] as $tablename => $aliases) {
-			if (!is_array($aliases)) {
-				$aliases = array($aliases);
-			}
-			// s'il y a plusieurs alias pour la même table, on devrait avoir défini un mapping dans la config de la query.
-			// sinon, c'est la merde -> exception.
-			if (count($aliases) > 1) {
-				if (isset($options['map']) && isset($options['map'][$tablename])) {
-					$alias = $options['map'][$tablename];
-				} else {
-					throw new Exception(sprintf("The table [%s] as several aliases [%s]. You have to map the good one in the query call configuration.", $tablename, implode(', ', $aliases)));
-				}
-			} else {
-				$alias = $aliases[0];
-			}
-			$table_names[] = $tablename;
-			$aliases_name[] = $alias;
+		$aliases = $data['flataliases'][$tablename];
+		if (!is_array($aliases)) {
+			$aliases = array($aliases);
 		}
+		// s'il y a plusieurs alias pour la même table, on devrait avoir défini un mapping dans la config de la query.
+		// sinon, c'est la merde -> exception.
+		if (count($aliases) > 1) {
+			if (isset($options['map']) && isset($options['map'][$tablename])) {
+				$alias = $options['map'][$tablename];
+			} else {
+				throw new Exception(sprintf("The table [%s] as several aliases [%s]. You have to map the good one in the query call configuration.", $tablename, implode(', ', $aliases)));
+			}
+		} else {
+			$alias = $aliases[0];
+		}
+		$table_names[] = $tablename;
+		$aliases_name[] = $alias;
+
 		foreach ($filter as &$query_part) {
 			$query_part = $this->aliaseIt($table_names, $aliases_name, $query_part);
 		}

@@ -11,6 +11,7 @@ class Query {
 
 	protected $aliasesReferences = array();
 	protected $aliasesTree = array();
+	protected $relationTypes = array();
 
 	public function __construct(Container $c) {
 		$this->container = $c;
@@ -22,6 +23,10 @@ class Query {
 
 	public function setAliasesTree($tree) {
 		$this->aliasesTree = $tree;
+	}
+
+	public function setRelationTypes($types) {
+		$this->relationTypes = $types;
 	}
 
 	public function getAliasesTree() {
@@ -255,7 +260,7 @@ class Query {
 			}
 
 			// gestion des relations 1-n
-			$this->manageRelationsType($record, $config['table']);
+			$this->manageRelationsType($record);
 
 			// fusion des records
 			if (!isset($formatted[$record['id']])) {
@@ -536,16 +541,14 @@ class Query {
 	 * Gestion des relations 1-n
 	 *
 	 * @param $record
-	 * @param $base
 	 */
-	public function manageRelationsType(&$record, $base) {
+	public function manageRelationsType(&$record) {
 		foreach ($record as $fieldname => &$content) {
 
 			// si $content est un tableau, alors on est dans une relation et $fieldname est un nom de table
 			if (is_array($content)) {
-				$this->manageRelationsType($content, $fieldname);
-				$join_filter = $this->container[$base]->getFilters('join');
-				if (isset($join_filter[$fieldname]['type']) && $join_filter[$fieldname]['type'] == 'many') {
+				$this->manageRelationsType($content);
+				if ($this->relationTypes[$fieldname] == 'many') {
 					$content = array($content);
 				}
 			}
@@ -623,8 +626,14 @@ class Query {
 			$data['parts']['select'][] = $local_alias . '.id';
 			$data['parts']['select'][] = $joined_alias . '.id';
 
+			// relation name
+			$relation_name = false;
+			if (isset($options['name'])) {
+				$relation_name = $options['name'];
+			}
+
 			// handle aliases libraries
-			$this->registerAlias($local_alias, $joined_alias, $joined_table, $basetable_joins, $jointable_joins);
+			$this->registerAlias($local_alias, $joined_alias, $joined_table, $basetable_joins, $jointable_joins, $relation_name);
 			$this->addFlatAlias($data['flataliases'], $joined_table, $joined_alias);
 		}
 
@@ -657,9 +666,10 @@ class Query {
 	 * @param string $joinedTable Le nom de la table à aliaser
 	 * @param array $localTableFilters Les filtres 'join' de la table parente
 	 * @param array $joinedTableFilters Les filtres 'join' de la table jointe
+	 * @param string $relationName Le nom de la relation pour cet alias
 	 * @return bool
 	 */
-	public function registerAlias($localAlias, $joinedAlias, $joinedTable, $localTableFilters, $joinedTableFilters) {
+	public function registerAlias($localAlias, $joinedAlias, $joinedTable, $localTableFilters, $joinedTableFilters, $relationName) {
 		if (!isset($localTableFilters[$joinedTable])) {
 			return false;
 		}
@@ -669,10 +679,14 @@ class Query {
 		if (!$this->getPathAlias($localAlias)) {
 			$this->aliasesTree[$joinedAlias] = array(
 				'table' => $joinedTable,
+				'relation' => $relationName ?: $joinedTable,
 				'type' => isset($localTableFilters[$joinedTable]['type']) ? $localTableFilters[$joinedTable]['type'] : 'one',
 				'children' => array(),
 				'parent' => null
 			);
+
+			// création d'un lien entre un nom de relation et un type de relation
+			$this->relationTypes[$this->aliasesTree[$joinedAlias]['relation']] = $this->aliasesTree[$joinedAlias]['type'];
 
 			// stockage d'une référence vers le nouvel alias
 			$this->aliasesReferences[$joinedAlias] = &$this->aliasesTree[$joinedAlias];
@@ -681,9 +695,13 @@ class Query {
 		} else {
 			$child = array(
 				'table' => $joinedTable,
+				'relation' => $relationName ?: $joinedTable,
 				'type' => isset($joinedTableFilters[$joinedTable]['type']) ? $joinedTableFilters[$joinedTable]['type'] : 'one',
 				'children' => array()
 			);
+			// création d'un lien entre un nom de relation et un type de relation
+			$this->relationTypes[$child['relation']] = $child['type'];
+
 			$this->aliasesTreeAddChild($this->aliasesTree, $localAlias, $joinedAlias, $child);
 		}
 
@@ -749,7 +767,7 @@ class Query {
 			return $result;
 		}
 
-		array_unshift($result, $part['table']);
+		array_unshift($result, $part['relation']);
 		return $this->get($part['parent'], $result);
 	}
 

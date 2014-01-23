@@ -12,6 +12,7 @@ class Query {
 	protected $aliasesReferences = array();
 	protected $aliasesTree = array();
 	protected $relationTypes = array();
+	protected $relationTableNames = array();
 
 	public function __construct(Container $c) {
 		$this->container = $c;
@@ -297,6 +298,12 @@ class Query {
 				$tablename = array_pop($path);
 			} else {
 				$tablename = $data['base']['table'];
+			}
+
+			// si $tablename est en fait un nom de relation, il faut retrouver le vrai nom
+			// de la table.
+			if (isset($this->relationTableNames[$tablename])) {
+				$tablename = $this->relationTableNames[$tablename];
 			}
 
 			// si $filter_array est vide, c'est qu'on appelle un filtre sur la table
@@ -688,6 +695,9 @@ class Query {
 			// création d'un lien entre un nom de relation et un type de relation
 			$this->relationTypes[$this->aliasesTree[$joinedAlias]['relation']] = $this->aliasesTree[$joinedAlias]['type'];
 
+			// création d'un lien entre le nom de la relation et le nom de la table
+			$this->relationTableNames[$this->aliasesTree[$joinedAlias]['relation']] = $joinedTable;
+
 			// stockage d'une référence vers le nouvel alias
 			$this->aliasesReferences[$joinedAlias] = &$this->aliasesTree[$joinedAlias];
 
@@ -701,6 +711,9 @@ class Query {
 			);
 			// création d'un lien entre un nom de relation et un type de relation
 			$this->relationTypes[$child['relation']] = $child['type'];
+
+			// création d'un lien entre le nom de la relation et le nom de la table
+			$this->relationTableNames[$child['relation']] = $joinedTable;
 
 			$this->aliasesTreeAddChild($this->aliasesTree, $localAlias, $joinedAlias, $child);
 		}

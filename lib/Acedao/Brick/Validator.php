@@ -1,5 +1,5 @@
 <?php
-namespace Acedao;
+namespace Acedao\Brick;
 
 
 trait Validator {
@@ -28,6 +28,7 @@ trait Validator {
 	 * defined in the getMandatoryFields(), getFormattedFields() and getAllowedFields() methods.
 	 *
 	 * @param array $userProvidedData
+     * @param bool $allowUnknown
 	 * @return bool
 	 */
 	public function validate(array $userProvidedData, $allowUnknown = false) {

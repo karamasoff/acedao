@@ -2,6 +2,10 @@
 
 namespace Acedao;
 
+use Acedao\Exception\MissingDependencyException;
+use Acedao\Exception\MissingKeyException;
+use Acedao\Exception\WrongParameterException;
+
 class Query {
 
 	/**
@@ -62,8 +66,17 @@ class Query {
 	 *
 	 * @param array $config
 	 * @return array
+     * @throws Exception
 	 */
 	public function getSelectedFields($config) {
+        // check if table is registered
+        if (!isset($config['table'])) {
+            throw new MissingKeyException('$config' . " array does not contain a 'table' key. How can I be sure that your query will work ?");
+        }
+        if (!isset($this->container[$config['table']])) {
+            throw new MissingDependencyException(sprintf("The table %s is not registered in the Container. Can't go on...", $config['table']));
+        }
+
 		$fields = isset($config['select']) ? $config['select'] : $this->container[$config['table']]->getDefaultFields();
 		if (!in_array('id', $fields))
 			array_unshift($fields, 'id');
@@ -341,7 +354,7 @@ class Query {
 	 * @param array $options Les options envoyées pour ce filtre
 	 * @throws Exception
 	 */
-	public function applyConditions(&$data, $filtername, $options) {
+	public function applyConditions(&$data, $filtername, $options = null) {
 		// détermination de la table sur laquelle le filtre doit s'appliquer
 		list($filtername, $tablename, $alias) = $this->extractFilterAliasAndTable($data, $filtername);
 
@@ -363,7 +376,10 @@ class Query {
 		$data['parts']['where'][] = $where_str;
 
 		// traitement des paramètres
-		$this->handleFilterParameters($data, $filtername, $options, $where_str);
+        if (isset($options) && $options) {
+            $this_condition_parameters = $this->mapFilterParametersNames($filtername, $where_str, $options);
+            $data['params'] = array_merge($data['params'], $this_condition_parameters);
+        }
 	}
 
 	/**
@@ -373,55 +389,49 @@ class Query {
 	 * @param $sql
 	 * @param $options
 	 * @return array|bool
+     * @throws Exception
 	 */
 	public function mapFilterParametersNames($sql, $options) {
+        if (!is_array($options)) {
+            $options = array($options);
+        }
+
 		$result_preg = array();
 		preg_match_all('/(\:\w+)/', $sql, $result_preg);
 		$result_preg = array_unique($result_preg[0]);
+
+        if (count($result_preg) == 0) {
+            return array();
+        }
+
 		if (count($result_preg) > count($options)) {
-			return false;
+            throw new WrongParameterException(sprintf("Not enough values provided (%s) to feed the query parameters (%s).", count($options), count($result_preg)));
 		}
 
-		if (count($result_preg) > 0) {
-			$options = array_values($options);
-			if (count($options) > count($result_preg)) {
-				$options = array_slice($options, 0, count($result_preg));
-			}
-			$result = array_combine($result_preg, $options);
-		} else {
-			$result = $options;
-		}
+        // if keys were provided in the option array, we test these keys
+        // against the sql part provided.
+        $options_keys = array_keys($options);
+        if (!is_int($options_keys[0])) {
+            $result_preg_compare = array_flip($result_preg);
+            $compare = array_intersect_key($options, $result_preg_compare);
+            if (count($compare) != count($result_preg)) {
+                throw new MissingKeyException(sprintf("Provided keys (%s) don't match needed keys (%s).", implode(', ', $options_keys), implode(', ', $result_preg)));
+            }
+
+            // $compare contains all what we want.
+            // let's sort both arrays to be sure ton combine properly their values.
+            sort($result_preg);
+            $options = $compare;
+            ksort($options);
+        }
+
+        $options = array_values($options);
+        if (count($options) > count($result_preg)) {
+            $options = array_slice($options, 0, count($result_preg));
+        }
+        $result = array_combine($result_preg, $options);
 
 		return $result;
-	}
-
-	/**
-	 * Traitement des éventuels paramètres fournis avec le filtre
-	 *
-	 * @param $data
-	 * @param $filtername
-	 * @param $options
-	 * @param $sql
-	 * @throws Exception
-	 */
-	public function handleFilterParameters(&$data, $filtername, $options, $sql) {
-		if (isset($options) && $options) {
-			if (!is_array($options)) {
-				$options = array($options);
-			}
-			$keys = array_keys($options);
-
-			// Si les clés sont numériques, c'est qu'on n'a pas explicité le nom
-			// des paramètres à passer au filtre. Donc le programme va essayer de
-			// les mapper comme un grand en lisant la requête.
-			if (is_int($keys[0])) {
-				if (false === ($options = $this->mapFilterParametersNames($sql, $options))) {
-					throw new Exception(sprintf("Filter [%s] does not provide enough values (%s) to feed the query parameters.", $filtername, count($keys)));
-				}
-			}
-
-			$data['params'] = array_merge($data['params'], $options);
-		}
 	}
 
 	/**
@@ -591,7 +601,7 @@ class Query {
 		$basetable_joins = $basetable_dao->getFilters('join');
 		$jointable_joins = $jointable_dao->getFilters('join');
 
-		$default_options = $basetable_joins[$joined_table];
+        $default_options = $this->retrieveFilter($basetable_dao, 'join', $joined_table);
 
 		// select
 		if (isset($options['select'])) {

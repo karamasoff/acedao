@@ -8,6 +8,9 @@ trait Dao {
 
     public $filters;
 
+	public function construct() {
+	}
+
     public function loadFilters() {
         $this->filters = $this->defineFilters();
     }

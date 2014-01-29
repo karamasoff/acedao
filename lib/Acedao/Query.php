@@ -377,7 +377,7 @@ class Query {
 
 		// traitement des paramètres
         if (isset($options) && $options) {
-            $this_condition_parameters = $this->mapFilterParametersNames($filtername, $where_str, $options);
+            $this_condition_parameters = $this->mapFilterParametersNames($where_str, $options);
             $data['params'] = array_merge($data['params'], $this_condition_parameters);
         }
 	}

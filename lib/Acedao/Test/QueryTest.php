@@ -403,6 +403,11 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
                 array(':id' => 22)
             ), // $options n'est pas un tableau
 			array(
+				'p.enabled = :enabled',
+				true,
+				array(':enabled' => true)
+			), // $options est un booléen
+			array(
 				"s.date BETWEEN :start AND :end",
 				array(':end' => '2013-12-31', ':start' => '2013-12-01'),
 				array(':start' => '2013-12-01', ':end' => '2013-12-31')

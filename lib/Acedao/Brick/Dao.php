@@ -16,7 +16,11 @@ trait Dao {
     }
 
     public function defineFilters() {
-        return array();
+        return array(
+		    'join' => array(),
+		    'where' => array(),
+		    'orderby' => array()
+	    );
     }
 
     public function getFilters($key = null) {

@@ -847,13 +847,13 @@ class Query {
 	final public function save($tableName, $data) {
         if (array_key_exists('id', $data) && $data['id']) {
             if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
-                $data['updated_by'] = $this->container[$tableName]->getUser();
+                $data['updated_by'] = $this->container[$tableName]->getJournalizeUser();
                 $data['updated_at'] = date('Y-m-d H:i:s');
             }
             return $this->update($tableName, $data);
         } else {
             if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
-                $data['created_by'] = $this->container[$tableName]->getUser();
+                $data['created_by'] = $this->container[$tableName]->getJournalizeUser();
                 $data['created_at'] = date('Y-m-d H:i:s');
             }
             return $this->insert($tableName, $data);

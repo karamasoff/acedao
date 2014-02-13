@@ -7,7 +7,7 @@ trait Journalizer {
      * Get the name/id/whatever you want of the user who is manipulating the data
      * @return String
      */
-    abstract public function getUser();
+    abstract public function getJournalizeUser();
 
     /**
      * Get list of the journalization fields

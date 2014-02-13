@@ -2,7 +2,6 @@
 
 namespace Acedao\Test;
 
-
 use Acedao\Container;
 use Acedao\Exception;
 use Acedao\Factory;

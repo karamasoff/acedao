@@ -78,7 +78,11 @@ class Query {
         }
 
 		$fields = isset($config['select']) ? $config['select'] : $this->container[$config['table']]->getDefaultFields();
-		if (!in_array('id', $fields))
+        in_array('Acedao\Brick\Journalizer', class_uses($this->container[$config['table']])) ?
+            $fields = array_merge($fields, $this->container[$config['table']]->getJournalizeFields()) :
+            '';
+
+        if (!in_array('id', $fields))
 			array_unshift($fields, 'id');
 
 		return $fields;
@@ -841,11 +845,19 @@ class Query {
 	}
 
 	final public function save($tableName, $data) {
-		if (array_key_exists('id', $data) && $data['id']) {
-			return $this->update($tableName, $data);
-		} else {
-			return $this->insert($tableName, $data);
-		}
+        if (array_key_exists('id', $data) && $data['id']) {
+            if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
+                $data['updated_by'] = $this->container[$tableName]->getUser();
+                $data['updated_at'] = date('Y-m-d H:i:s');
+            }
+            return $this->update($tableName, $data);
+        } else {
+            if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
+                $data['created_by'] = $this->container[$tableName]->getUser();
+                $data['created_at'] = date('Y-m-d H:i:s');
+            }
+            return $this->insert($tableName, $data);
+        }
 	}
 
 

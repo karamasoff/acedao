@@ -2,6 +2,10 @@
 
 namespace Acedao;
 
+use Acedao\Exception\MissingDependencyException;
+use Acedao\Exception\MissingKeyException;
+use Acedao\Exception\WrongParameterException;
+
 class Query {
 
 	/**
@@ -11,6 +15,8 @@ class Query {
 
 	protected $aliasesReferences = array();
 	protected $aliasesTree = array();
+	protected $relationTypes = array();
+	protected $relationTableNames = array();
 
 	public function __construct(Container $c) {
 		$this->container = $c;
@@ -22,6 +28,10 @@ class Query {
 
 	public function setAliasesTree($tree) {
 		$this->aliasesTree = $tree;
+	}
+
+	public function setRelationTypes($types) {
+		$this->relationTypes = $types;
 	}
 
 	public function getAliasesTree() {
@@ -56,10 +66,23 @@ class Query {
 	 *
 	 * @param array $config
 	 * @return array
+     * @throws Exception
 	 */
 	public function getSelectedFields($config) {
+        // check if table is registered
+        if (!isset($config['table'])) {
+            throw new MissingKeyException('$config' . " array does not contain a 'table' key. How can I be sure that your query will work ?");
+        }
+        if (!isset($this->container[$config['table']])) {
+            throw new MissingDependencyException(sprintf("The table %s is not registered in the Container. Can't go on...", $config['table']));
+        }
+
 		$fields = isset($config['select']) ? $config['select'] : $this->container[$config['table']]->getDefaultFields();
-		if (!in_array('id', $fields))
+        in_array('Acedao\Brick\Journalizer', class_uses($this->container[$config['table']])) ?
+            $fields = array_merge($fields, $this->container[$config['table']]->getJournalizeFields()) :
+            '';
+
+        if (!in_array('id', $fields))
 			array_unshift($fields, 'id');
 
 		return $fields;
@@ -255,7 +278,7 @@ class Query {
 			}
 
 			// gestion des relations 1-n
-			$this->manageRelationsType($record, $config['table']);
+			$this->manageRelationsType($record);
 
 			// fusion des records
 			if (!isset($formatted[$record['id']])) {
@@ -294,6 +317,12 @@ class Query {
 				$tablename = $data['base']['table'];
 			}
 
+			// si $tablename est en fait un nom de relation, il faut retrouver le vrai nom
+			// de la table.
+			if (isset($this->relationTableNames[$tablename])) {
+				$tablename = $this->relationTableNames[$tablename];
+			}
+
 			// si $filter_array est vide, c'est qu'on appelle un filtre sur la table
 			// de base de la requête.
 		} else {
@@ -329,7 +358,7 @@ class Query {
 	 * @param array $options Les options envoyées pour ce filtre
 	 * @throws Exception
 	 */
-	public function applyConditions(&$data, $filtername, $options) {
+	public function applyConditions(&$data, $filtername, $options = null) {
 		// détermination de la table sur laquelle le filtre doit s'appliquer
 		list($filtername, $tablename, $alias) = $this->extractFilterAliasAndTable($data, $filtername);
 
@@ -351,7 +380,10 @@ class Query {
 		$data['parts']['where'][] = $where_str;
 
 		// traitement des paramètres
-		$this->handleFilterParameters($data, $filtername, $options, $where_str);
+        if (isset($options) && $options) {
+            $this_condition_parameters = $this->mapFilterParametersNames($where_str, $options);
+            $data['params'] = array_merge($data['params'], $this_condition_parameters);
+        }
 	}
 
 	/**
@@ -361,55 +393,49 @@ class Query {
 	 * @param $sql
 	 * @param $options
 	 * @return array|bool
+     * @throws Exception
 	 */
 	public function mapFilterParametersNames($sql, $options) {
+        if (!is_array($options)) {
+            $options = array($options);
+        }
+
 		$result_preg = array();
 		preg_match_all('/(\:\w+)/', $sql, $result_preg);
 		$result_preg = array_unique($result_preg[0]);
+
+        if (count($result_preg) == 0) {
+            return array();
+        }
+
 		if (count($result_preg) > count($options)) {
-			return false;
+            throw new WrongParameterException(sprintf("Not enough values provided (%s) to feed the query parameters (%s).", count($options), count($result_preg)));
 		}
 
-		if (count($result_preg) > 0) {
-			$options = array_values($options);
-			if (count($options) > count($result_preg)) {
-				$options = array_slice($options, 0, count($result_preg));
-			}
-			$result = array_combine($result_preg, $options);
-		} else {
-			$result = $options;
-		}
+        // if keys were provided in the option array, we test these keys
+        // against the sql part provided.
+        $options_keys = array_keys($options);
+        if (!is_int($options_keys[0])) {
+            $result_preg_compare = array_flip($result_preg);
+            $compare = array_intersect_key($options, $result_preg_compare);
+            if (count($compare) != count($result_preg)) {
+                throw new MissingKeyException(sprintf("Provided keys (%s) don't match needed keys (%s).", implode(', ', $options_keys), implode(', ', $result_preg)));
+            }
+
+            // $compare contains all what we want.
+            // let's sort both arrays to be sure ton combine properly their values.
+            sort($result_preg);
+            $options = $compare;
+            ksort($options);
+        }
+
+        $options = array_values($options);
+        if (count($options) > count($result_preg)) {
+            $options = array_slice($options, 0, count($result_preg));
+        }
+        $result = array_combine($result_preg, $options);
 
 		return $result;
-	}
-
-	/**
-	 * Traitement des éventuels paramètres fournis avec le filtre
-	 *
-	 * @param $data
-	 * @param $filtername
-	 * @param $options
-	 * @param $sql
-	 * @throws Exception
-	 */
-	public function handleFilterParameters(&$data, $filtername, $options, $sql) {
-		if (isset($options) && $options) {
-			if (!is_array($options)) {
-				$options = array($options);
-			}
-			$keys = array_keys($options);
-
-			// Si les clés sont numériques, c'est qu'on n'a pas explicité le nom
-			// des paramètres à passer au filtre. Donc le programme va essayer de
-			// les mapper comme un grand en lisant la requête.
-			if (is_int($keys[0])) {
-				if (false === ($options = $this->mapFilterParametersNames($sql, $options))) {
-					throw new Exception(sprintf("Filter [%s] does not provide enough values (%s) to feed the query parameters.", $filtername, count($keys)));
-				}
-			}
-
-			$data['params'] = array_merge($data['params'], $options);
-		}
 	}
 
 	/**
@@ -437,24 +463,24 @@ class Query {
 		// remplacement des alias sur les clause order by
 		$table_names = array();
 		$aliases_name = array();
-		foreach ($data['flataliases'] as $tablename => $aliases) {
-			if (!is_array($aliases)) {
-				$aliases = array($aliases);
-			}
-			// s'il y a plusieurs alias pour la même table, on devrait avoir défini un mapping dans la config de la query.
-			// sinon, c'est la merde -> exception.
-			if (count($aliases) > 1) {
-				if (isset($options['map']) && isset($options['map'][$tablename])) {
-					$alias = $options['map'][$tablename];
-				} else {
-					throw new Exception(sprintf("The table [%s] as several aliases [%s]. You have to map the good one in the query call configuration.", $tablename, implode(', ', $aliases)));
-				}
-			} else {
-				$alias = $aliases[0];
-			}
-			$table_names[] = $tablename;
-			$aliases_name[] = $alias;
+		$aliases = $data['flataliases'][$tablename];
+		if (!is_array($aliases)) {
+			$aliases = array($aliases);
 		}
+		// s'il y a plusieurs alias pour la même table, on devrait avoir défini un mapping dans la config de la query.
+		// sinon, c'est la merde -> exception.
+		if (count($aliases) > 1) {
+			if (isset($options['map']) && isset($options['map'][$tablename])) {
+				$alias = $options['map'][$tablename];
+			} else {
+				throw new Exception(sprintf("The table [%s] as several aliases [%s]. You have to map the good one in the query call configuration.", $tablename, implode(', ', $aliases)));
+			}
+		} else {
+			$alias = $aliases[0];
+		}
+		$table_names[] = $tablename;
+		$aliases_name[] = $alias;
+
 		foreach ($filter as &$query_part) {
 			$query_part = $this->aliaseIt($table_names, $aliases_name, $query_part);
 		}
@@ -536,16 +562,14 @@ class Query {
 	 * Gestion des relations 1-n
 	 *
 	 * @param $record
-	 * @param $base
 	 */
-	public function manageRelationsType(&$record, $base) {
+	public function manageRelationsType(&$record) {
 		foreach ($record as $fieldname => &$content) {
 
 			// si $content est un tableau, alors on est dans une relation et $fieldname est un nom de table
 			if (is_array($content)) {
-				$this->manageRelationsType($content, $fieldname);
-				$join_filter = $this->container[$base]->getFilters('join');
-				if (isset($join_filter[$fieldname]['type']) && $join_filter[$fieldname]['type'] == 'many') {
+				$this->manageRelationsType($content);
+				if ($this->relationTypes[$fieldname] == 'many') {
 					$content = array($content);
 				}
 			}
@@ -581,7 +605,7 @@ class Query {
 		$basetable_joins = $basetable_dao->getFilters('join');
 		$jointable_joins = $jointable_dao->getFilters('join');
 
-		$default_options = $basetable_joins[$joined_table];
+        $default_options = $this->retrieveFilter($basetable_dao, 'join', $joined_table);
 
 		// select
 		if (isset($options['select'])) {
@@ -623,8 +647,14 @@ class Query {
 			$data['parts']['select'][] = $local_alias . '.id';
 			$data['parts']['select'][] = $joined_alias . '.id';
 
+			// relation name
+			$relation_name = false;
+			if (isset($options['name'])) {
+				$relation_name = $options['name'];
+			}
+
 			// handle aliases libraries
-			$this->registerAlias($local_alias, $joined_alias, $joined_table, $basetable_joins, $jointable_joins);
+			$this->registerAlias($local_alias, $joined_alias, $joined_table, $basetable_joins, $jointable_joins, $relation_name);
 			$this->addFlatAlias($data['flataliases'], $joined_table, $joined_alias);
 		}
 
@@ -657,9 +687,10 @@ class Query {
 	 * @param string $joinedTable Le nom de la table à aliaser
 	 * @param array $localTableFilters Les filtres 'join' de la table parente
 	 * @param array $joinedTableFilters Les filtres 'join' de la table jointe
+	 * @param string $relationName Le nom de la relation pour cet alias
 	 * @return bool
 	 */
-	public function registerAlias($localAlias, $joinedAlias, $joinedTable, $localTableFilters, $joinedTableFilters) {
+	public function registerAlias($localAlias, $joinedAlias, $joinedTable, $localTableFilters, $joinedTableFilters, $relationName) {
 		if (!isset($localTableFilters[$joinedTable])) {
 			return false;
 		}
@@ -669,10 +700,17 @@ class Query {
 		if (!$this->getPathAlias($localAlias)) {
 			$this->aliasesTree[$joinedAlias] = array(
 				'table' => $joinedTable,
+				'relation' => $relationName ?: $joinedTable,
 				'type' => isset($localTableFilters[$joinedTable]['type']) ? $localTableFilters[$joinedTable]['type'] : 'one',
 				'children' => array(),
 				'parent' => null
 			);
+
+			// création d'un lien entre un nom de relation et un type de relation
+			$this->relationTypes[$this->aliasesTree[$joinedAlias]['relation']] = $this->aliasesTree[$joinedAlias]['type'];
+
+			// création d'un lien entre le nom de la relation et le nom de la table
+			$this->relationTableNames[$this->aliasesTree[$joinedAlias]['relation']] = $joinedTable;
 
 			// stockage d'une référence vers le nouvel alias
 			$this->aliasesReferences[$joinedAlias] = &$this->aliasesTree[$joinedAlias];
@@ -681,9 +719,16 @@ class Query {
 		} else {
 			$child = array(
 				'table' => $joinedTable,
+				'relation' => $relationName ?: $joinedTable,
 				'type' => isset($joinedTableFilters[$joinedTable]['type']) ? $joinedTableFilters[$joinedTable]['type'] : 'one',
 				'children' => array()
 			);
+			// création d'un lien entre un nom de relation et un type de relation
+			$this->relationTypes[$child['relation']] = $child['type'];
+
+			// création d'un lien entre le nom de la relation et le nom de la table
+			$this->relationTableNames[$child['relation']] = $joinedTable;
+
 			$this->aliasesTreeAddChild($this->aliasesTree, $localAlias, $joinedAlias, $child);
 		}
 
@@ -749,7 +794,7 @@ class Query {
 			return $result;
 		}
 
-		array_unshift($result, $part['table']);
+		array_unshift($result, $part['relation']);
 		return $this->get($part['parent'], $result);
 	}
 
@@ -800,11 +845,19 @@ class Query {
 	}
 
 	final public function save($tableName, $data) {
-		if (array_key_exists('id', $data) && $data['id']) {
-			return $this->update($tableName, $data);
-		} else {
-			return $this->insert($tableName, $data);
-		}
+        if (array_key_exists('id', $data) && $data['id']) {
+            if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
+                $data['updated_by'] = $this->container[$tableName]->getUser();
+                $data['updated_at'] = date('Y-m-d H:i:s');
+            }
+            return $this->update($tableName, $data);
+        } else {
+            if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
+                $data['created_by'] = $this->container[$tableName]->getUser();
+                $data['created_at'] = date('Y-m-d H:i:s');
+            }
+            return $this->insert($tableName, $data);
+        }
 	}
 
 

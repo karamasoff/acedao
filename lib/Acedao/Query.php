@@ -716,7 +716,7 @@ class Query {
 			$child = array(
 				'table' => $joinedTable,
 				'relation' => $relationName ?: $joinedTable,
-				'type' => isset($joinedTableFilters[$joinedTable]['type']) ? $joinedTableFilters[$joinedTable]['type'] : 'one',
+				'type' => isset($localTableFilters[$joinedTable]['type']) ? $localTableFilters[$joinedTable]['type'] : 'one',
 				'children' => array()
 			);
 			// création d'un lien entre un nom de relation et un type de relation

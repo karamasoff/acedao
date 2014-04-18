@@ -79,8 +79,7 @@ class Query {
 
         $fields = isset($config['select']) ? $config['select'] : $this->container[$config['table']]->getDefaultFields();
         in_array('Acedao\Brick\Journalizer', class_uses($this->container[$config['table']])) ?
-            $fields = array_merge($fields, $this->container[$config['table']]->getJournalizeFields()) :
-            '';
+            $fields = array_merge($fields, $this->container[$config['table']]->getJournalizeFields()) : '';
 
         if (!in_array('id', $fields))
             array_unshift($fields, 'id');

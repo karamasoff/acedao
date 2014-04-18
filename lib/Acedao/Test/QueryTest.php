@@ -25,20 +25,20 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 
 		$container = new Container(array('mode' => 'strict'));
 
-		$container['car'] = function() {
-			return Factory::load('Acedao\Test\Mock\Car');
+		$container['car'] = function($c) {
+			return Factory::load('Acedao\Test\Mock\Car', $c, 'car');
 		};
-        $container['equipment'] = function() {
-            return Factory::load('Acedao\Test\Mock\Equipment');
+        $container['equipment'] = function($c) {
+            return Factory::load('Acedao\Test\Mock\Equipment', $c, 'equipment');
         };
-        $container['car_equipment'] = function() {
-            return Factory::load('Acedao\Test\Mock\Car\Equipment');
+        $container['car_equipment'] = function($c) {
+            return Factory::load('Acedao\Test\Mock\Car\Equipment', $c, 'car_equipment');
         };
-        $container['car_category'] = function() {
-            return Factory::load('Acedao\Test\Mock\Car\Category');
+        $container['car_category'] = function($c) {
+            return Factory::load('Acedao\Test\Mock\Car\Category', $c, 'car_category');
         };
-        $container['buyer'] = function() {
-            return Factory::load('Acedao\Test\Mock\Buyer');
+        $container['buyer'] = function($c) {
+            return Factory::load('Acedao\Test\Mock\Buyer', $c, 'buyer');
         };
 
 		$this->container = $container;

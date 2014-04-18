@@ -1,11 +1,12 @@
 <?php
 namespace Acedao\Test\Mock;
 
-use Acedao\Dao;
+
+use Acedao\Brick\Dao;
 use Acedao\Queriable;
 
 class Buyer implements Queriable {
-    use Dao
+    use Dao;
 
 	/**
 	 * An array of field to select if nothing is provided in the query

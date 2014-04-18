@@ -236,6 +236,9 @@ class Query {
             return $this->container['db']->execute($sqlStmt, array(':id' => $id));
         }
 
+        // tentative de récupération de l'alias principal
+        $config = array_merge($config, $this->extractAlias($config['from']));
+
         // initialisation du tableau de données de la query
         $data = array(
             'flataliases' => array($config['table'] => $config['alias']),
@@ -244,7 +247,7 @@ class Query {
                 'alias' => $config['alias']
             ),
             'parts' => array(
-                'from' => array($config['table'] . ' ' . $config['alias']),
+                'from' => array($config['table']),
                 'leftjoin' => array(),
                 'innerjoin' => array(),
                 'where' => array(),
@@ -283,6 +286,9 @@ class Query {
             $sql .= ' INNER JOIN ' . implode(' ', $parts['innerjoin']);
         if (count($parts['where']) > 0)
             $sql .= ' WHERE ' . implode(' AND ', $parts['where']);
+
+        // on vire l'alias principal
+        $sql = str_replace($data['base']['alias'].'.', '', $sql);
 
         return $this->container['db']->execute($sql, $params);
     }

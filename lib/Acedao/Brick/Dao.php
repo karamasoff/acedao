@@ -107,6 +107,10 @@ trait Dao {
         $config = array(
             'from' => $this->t()
         );
+
+        if (!is_array($userConfig)) {
+            $userConfig = array('where' => array('id' => $userConfig));
+        }
         $config = array_merge_recursive($userConfig, $config);
 
         return $this->query->delete($config);

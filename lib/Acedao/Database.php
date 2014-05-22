@@ -42,7 +42,6 @@ class Database {
 				return $sth->rowCount();
 		} catch (\PDOException $e) {
 			throw new Exception("Query error: {$e->getMessage()} - {$sql}");
-			return false;
 		}
 	}
 
@@ -78,15 +77,15 @@ class Database {
 	}
 
 	public function beginTransaction() {
-		$this->dblol->beginTransaction();
+		return $this->dblol->beginTransaction();
 	}
 
 	public function commit() {
-		$this->dblol->commit();
+        return $this->dblol->commit();
 	}
 
 	public function rollback() {
-		$this->dblol->rollBack();
+        return $this->dblol->rollBack();
 	}
 
 	private function prepare($sql, $params = array()) {

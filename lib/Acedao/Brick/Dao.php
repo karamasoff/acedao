@@ -120,4 +120,19 @@ trait Dao {
 
         return $this->query->delete($config);
     }
+
+    /**
+     * Démarrer une transaction
+     */
+    public function beginTransaction() {
+        return $this->container['db']->beginTransaction();
+    }
+
+    public function commit() {
+        return $this->container['db']->commit();
+    }
+
+    public function rollback() {
+        return $this->container['db']->rollback();
+    }
 } 

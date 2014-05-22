@@ -40,6 +40,9 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
         $container['buyer'] = function($c) {
             return Factory::load('Acedao\Test\Mock\Buyer', $c, 'buyer');
         };
+        $container['order'] = function($c) {
+            return Factory::load('Acedao\Test\Mock\Order', $c, 'order');
+        };
 
 		$this->container = $container;
 		$this->query = $this->container['query'];
@@ -502,6 +505,25 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
             array('s.enabled', array('enabled', 'sinister', 's')),
             array('e.enabled', array('enabled', 'employee', 'e'))
         );
+    }
+
+    public function testEscapeTableNameInFromClause() {
+        list($parts, $params) = $this->query->prepareSelect(array(
+            'from' => 'order o'
+        ));
+
+        $this->assertEquals($parts['from'][0], "`order` o");
+    }
+
+    public function testEscapeTableNameInJoinClause() {
+        list($parts, $params) = $this->query->prepareSelect(array(
+            'from' => 'car c',
+            'join' => array(
+                'order o' => array('name' => 'Commandes')
+            )
+        ));
+
+        $this->assertEquals($parts['leftjoin'][0], "LEFT JOIN `order` o ON c.id = o.car_id");
     }
 
 

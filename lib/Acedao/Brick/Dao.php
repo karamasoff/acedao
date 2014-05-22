@@ -18,6 +18,11 @@ trait Dao {
     public $tablename;
 
     /**
+     * @var bool Faut-il échapper le nom de la table ?
+     */
+    public $escapeTablename = false;
+
+    /**
      * @var \Acedao\Query
      */
     protected $query;

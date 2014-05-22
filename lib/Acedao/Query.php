@@ -135,13 +135,13 @@ class Query {
     }
 
     /**
-     * Lance une requête SELECT sur la BD
+     * Build the query parts
      *
-     * @param $config
+     * @param array $config
      * @return array
      * @throws Exception
      */
-    public function select($config) {
+    public function prepareSelect($config) {
         // S'il n'y a pas de table de départ, c'est mal parti pour faire un select...
         if (!isset($config['from']))
             throw new Exception('Array $parts needs a [from] entry.');
@@ -152,6 +152,13 @@ class Query {
         // récupération des champs sélectionnés et aliasement de chacun
         $select = $this->getSelectedFields($config);
         $select = $this->aliaseSelectedFields($config['alias'], $select);
+
+        // from part
+        $from_table = $config['table'];
+        if ($this->container[$from_table]->escapeTablename) {
+            $from_table = "`" . $from_table . "`";
+        }
+        $from_part = $from_table . ' ' . $config['alias'];
 
         // initialisation du tableau de données de la query
         $data = array(
@@ -164,7 +171,7 @@ class Query {
             ),
             'parts' => array(
                 'select' => $select,
-                'from' => array($config['table'] . ' ' . $config['alias']),
+                'from' => array($from_part),
                 'leftjoin' => array(),
                 'innerjoin' => array(),
                 'where' => array(),
@@ -205,7 +212,16 @@ class Query {
         // ajout des alias aux champs sélectionnés
         $parts['select'] = $this->nameAliasesSelectedFields($parts['select']);
 
-        // construction de la requête SQL
+        return array($parts, $params);
+    }
+
+    /**
+     * Convertit les parties de requête en requête.
+     *
+     * @param array $parts
+     * @return string
+     */
+    public function prepareSelectSql($parts) {
         $sql = sprintf('SELECT %1$s FROM %2$s', implode(', ', $parts['select']), implode(', ', $parts['from']));
         if (count($parts['leftjoin']) > 0)
             $sql .= ' ' . implode(' ', $parts['leftjoin']);
@@ -215,6 +231,22 @@ class Query {
             $sql .= ' WHERE ' . implode(' AND ', $parts['where']);
         if (count($parts['orderby']) > 0)
             $sql .= ' ORDER BY ' . implode(', ', $parts['orderby']);
+
+        return $sql;
+    }
+
+    /**
+     * Lance une requête SELECT sur la BD
+     *
+     * @param $config
+     * @return array
+     * @throws Exception
+     */
+    public function select($config) {
+        list($parts, $params) = $this->prepareSelect($config);
+
+        // construction de la requête SQL
+        $sql = $this->prepareSelectSql($parts);
 
 
 //		echo $sql;
@@ -240,6 +272,11 @@ class Query {
         // tentative de récupération de l'alias principal
         $config = array_merge($config, $this->extractAlias($config['from']));
 
+        $from_part = $config['table'];
+        if ($this->container[$from_part]->escapeTablename) {
+            $from_part = "`" . $from_part . "`";
+        }
+
         // initialisation du tableau de données de la query
         $data = array(
             'flataliases' => array($config['table'] => $config['alias']),
@@ -248,7 +285,7 @@ class Query {
                 'alias' => $config['alias']
             ),
             'parts' => array(
-                'from' => array($config['table']),
+                'from' => array($from_part),
                 'leftjoin' => array(),
                 'innerjoin' => array(),
                 'where' => array(),
@@ -699,8 +736,12 @@ class Query {
         if (isset($default_options['on'])) {
 
             $filter_table = $joined_table;
-            if ($joined_alias)
+            if ($jointable_dao->escapeTablename) {
+                $filter_table = "`" . $filter_table . "`";
+            }
+            if ($joined_alias) {
                 $filter_table = $filter_table . ' ' . $joined_alias;
+            }
 
             // alias
             foreach ($default_options['on'] as &$query_part) {

@@ -212,7 +212,7 @@ class Query {
         // ajout des alias aux champs sélectionnés
         $parts['select'] = $this->nameAliasesSelectedFields($parts['select']);
 
-        return array($parts, $params);
+        return array($parts, $params, $config);
     }
 
     /**
@@ -243,7 +243,7 @@ class Query {
      * @throws Exception
      */
     public function select($config) {
-        list($parts, $params) = $this->prepareSelect($config);
+        list($parts, $params, $config) = $this->prepareSelect($config);
 
         // construction de la requête SQL
         $sql = $this->prepareSelectSql($parts);

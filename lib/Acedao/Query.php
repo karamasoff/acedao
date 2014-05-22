@@ -155,7 +155,9 @@ class Query {
 
         // initialisation du tableau de données de la query
         $data = array(
-            'flataliases' => array($config['table'] => $config['alias']),
+            'flataliases' => array(
+                $config['table'] => $config['alias']
+            ),
             'base' => array(
                 'table' => $config['table'],
                 'alias' => $config['alias']
@@ -434,7 +436,11 @@ class Query {
 
         // remplacement des alias sur les conditions
         foreach ($filter as &$query_part) {
-            $query_part = $this->aliaseIt($tablename, $alias, $query_part);
+            $query_part = $this->aliaseIt(
+                array($tablename, 'this'),
+                array($alias, $alias),
+                $query_part
+            );
         }
 
         // création du SQL
@@ -523,8 +529,6 @@ class Query {
         }
 
         // remplacement des alias sur les clause order by
-        $table_names = array();
-        $aliases_name = array();
         $aliases = $data['flataliases'][$tablename];
         if (!is_array($aliases)) {
             $aliases = array($aliases);
@@ -540,11 +544,13 @@ class Query {
         } else {
             $alias = $aliases[0];
         }
-        $table_names[] = $tablename;
-        $aliases_name[] = $alias;
 
         foreach ($filter as &$query_part) {
-            $query_part = $this->aliaseIt($table_names, $aliases_name, $query_part);
+            $query_part = $this->aliaseIt(
+                array($tablename, 'this'),
+                array($alias, $alias),
+                $query_part
+            );
         }
 
         // création du SQL et gestion de la direction
@@ -699,8 +705,8 @@ class Query {
             // alias
             foreach ($default_options['on'] as &$query_part) {
                 $query_part = $this->aliaseIt(
-                    array($joined_table, $local_table),
-                    array($joined_alias, $local_alias),
+                    array($joined_table, $local_table, 'this'),
+                    array($joined_alias, $local_alias, $local_alias),
                     $query_part
                 );
             }

@@ -263,6 +263,13 @@ class Query {
         return $formatted;
     }
 
+    /**
+     * Suppression d'un ou plusieurs records
+     *
+     * @param array|int $config Une configuration de requête pour la suppression
+     * @param int $id Un identifiant
+     * @return int Le nombre de records supprimés
+     */
     public function delete($config, $id = null) {
         if (!is_array($config) && $id) {
             $sqlStmt = "DELETE FROM `" . $config . "` WHERE `id` = :id";

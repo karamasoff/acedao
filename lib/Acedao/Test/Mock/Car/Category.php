@@ -1,7 +1,7 @@
 <?php
 namespace Acedao\Test\Mock\Car;
 
-use Acedao\Dao;
+use Acedao\Brick\Dao;
 use Acedao\Queriable;
 
 class Category implements Queriable {

@@ -30,11 +30,10 @@ interface Queriable {
     public function init(Container $c);
 
     /**
-     * An array of field to select if nothing is provided in the query
-     *
-     * @return array
+     * An array of all the authorized fields that can be used in a query on this table
+     * @return mixed
      */
-    public function getDefaultFields();
+    public function getAllowedFields();
 
     /**
      * Defines all the query possibilities of the Queriable object (a table)

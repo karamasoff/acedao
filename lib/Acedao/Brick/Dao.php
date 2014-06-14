@@ -70,6 +70,23 @@ trait Dao {
     }
 
     /**
+     * Implémentation bidon de la méthode des champs autorisés sur ce DAO
+     *
+     * @return array
+     */
+    public function getAllowedFields() {
+        return array();
+    }
+
+    /**
+     * Récupération des à sélectionner par défaut dans les requêtes
+     * @return array
+     */
+    public function getDefaultFields() {
+        return $this->getAllowedFields();
+    }
+
+    /**
      * Récupération d'un groupe de filtres ou de la liste complète des filtres
      *
      * @param string $key Type de filtre (join, where, orderby)
@@ -100,6 +117,16 @@ trait Dao {
             $tablename .= ' ' . $alias;
         }
         return $tablename;
+    }
+
+    /**
+     * Enregistrement des données d'un DAO
+     *
+     * @param array $data
+     * @return int
+     */
+    public function save($data) {
+        return $this->query->save($this->t(), $data);
     }
 
     /**

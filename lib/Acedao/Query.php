@@ -969,12 +969,14 @@ class Query {
                 $data['updated_at'] = date('Y-m-d H:i:s');
             }
             return $this->update($tableName, $data);
-        } else {
+        } elseif (count($data) > 0) {
             if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
                 $data['created_by'] = $this->container[$tableName]->getJournalizeUser();
                 $data['created_at'] = date('Y-m-d H:i:s');
             }
             return $this->insert($tableName, $data);
         }
+
+        return false;
     }
 }

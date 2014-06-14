@@ -126,7 +126,9 @@ trait Dao {
      * @return int
      */
     public function save($data) {
-        return $this->query->save($this->t(), $data);
+        // filter $data against the allowed fields array
+        $filtered_data = array_intersect($data, $this->getAllowedFields());
+        return $this->query->save($this->t(), $filtered_data);
     }
 
     /**

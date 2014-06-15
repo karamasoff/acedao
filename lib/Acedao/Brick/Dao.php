@@ -134,7 +134,7 @@ trait Dao {
     /**
      * Requête de suppression d'un ou plusieurs records
      *
-     * @param array $userConfig
+     * @param array|int $userConfig
      * @return mixed
      */
     public function delete($userConfig) {

@@ -335,6 +335,12 @@ class Query {
         // on vire l'alias principal
         $sql = str_replace($data['base']['alias'].'.', '', $sql);
 
+//		echo $sql;
+//		echo '<pre>';
+//		print_r($params);
+//		echo '</pre>';
+//        die;
+
         return $this->container['db']->execute($sql, $params);
     }
 
@@ -958,6 +964,11 @@ class Query {
             }
         }
         $sqlStmt .= implode(', ', $updates) . ' WHERE `id` = :id';
+
+//        echo $sqlStmt;
+//        echo '<pre>';
+//        print_r($user_data);
+//        echo '</pre>';
 
         return $this->container['db']->execute($sqlStmt, $user_data);
     }

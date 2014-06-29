@@ -128,6 +128,9 @@ trait Dao {
     public function save($data) {
         // filter $data against the allowed fields array
         $filtered_data = array_intersect_key($data, array_flip($this->getAllowedFields()));
+        if (isset($filtered_data['id']) && !$filtered_data['id']) {
+            unset($filtered_data['id']);
+        }
         return $this->query->save($this->t(), $filtered_data);
     }
 

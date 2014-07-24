@@ -18,6 +18,11 @@ trait Dao {
     public $tablename;
 
     /**
+     * @var bool Faut-il échapper le nom de la table ?
+     */
+    public $escapeTablename = false;
+
+    /**
      * @var \Acedao\Query
      */
     protected $query;
@@ -65,6 +70,23 @@ trait Dao {
     }
 
     /**
+     * Implémentation bidon de la méthode des champs autorisés sur ce DAO
+     *
+     * @return array
+     */
+    public function getAllowedFields() {
+        return array();
+    }
+
+    /**
+     * Récupération des à sélectionner par défaut dans les requêtes
+     * @return array
+     */
+    public function getDefaultFields() {
+        return $this->getAllowedFields();
+    }
+
+    /**
      * Récupération d'un groupe de filtres ou de la liste complète des filtres
      *
      * @param string $key Type de filtre (join, where, orderby)
@@ -98,9 +120,24 @@ trait Dao {
     }
 
     /**
+     * Enregistrement des données d'un DAO
+     *
+     * @param array $data
+     * @return int
+     */
+    public function save($data) {
+        // filter $data against the allowed fields array
+        $filtered_data = array_intersect_key($data, array_flip($this->getAllowedFields()));
+        if (isset($filtered_data['id']) && !$filtered_data['id']) {
+            unset($filtered_data['id']);
+        }
+        return $this->query->save($this->t(), $filtered_data);
+    }
+
+    /**
      * Requête de suppression d'un ou plusieurs records
      *
-     * @param array $userConfig
+     * @param array|int $userConfig
      * @return mixed
      */
     public function delete($userConfig) {
@@ -114,5 +151,20 @@ trait Dao {
         $config = array_merge_recursive($userConfig, $config);
 
         return $this->query->delete($config);
+    }
+
+    /**
+     * Démarrer une transaction
+     */
+    public function beginTransaction() {
+        return $this->container['db']->beginTransaction();
+    }
+
+    public function commit() {
+        return $this->container['db']->commit();
+    }
+
+    public function rollback() {
+        return $this->container['db']->rollback();
     }
 } 

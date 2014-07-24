@@ -18,12 +18,6 @@ trait Validator {
 	abstract public function getFormattedFields();
 
 	/**
-	 * A list of fields that will be computed by the query.
-	 * @return array
-	 */
-	abstract public function getAllowedFields();
-
-	/**
 	 * This method will validate the data provided against fields
 	 * defined in the getMandatoryFields(), getFormattedFields() and getAllowedFields() methods.
 	 *

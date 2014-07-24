@@ -135,13 +135,13 @@ class Query {
     }
 
     /**
-     * Lance une requête SELECT sur la BD
+     * Build the query parts
      *
-     * @param $config
+     * @param array $config
      * @return array
      * @throws Exception
      */
-    public function select($config) {
+    public function prepareSelect($config) {
         // S'il n'y a pas de table de départ, c'est mal parti pour faire un select...
         if (!isset($config['from']))
             throw new Exception('Array $parts needs a [from] entry.');
@@ -153,16 +153,25 @@ class Query {
         $select = $this->getSelectedFields($config);
         $select = $this->aliaseSelectedFields($config['alias'], $select);
 
+        // from part
+        $from_table = $config['table'];
+        if ($this->container[$from_table]->escapeTablename) {
+            $from_table = "`" . $from_table . "`";
+        }
+        $from_part = $from_table . ' ' . $config['alias'];
+
         // initialisation du tableau de données de la query
         $data = array(
-            'flataliases' => array($config['table'] => $config['alias']),
+            'flataliases' => array(
+                $config['table'] => $config['alias']
+            ),
             'base' => array(
                 'table' => $config['table'],
                 'alias' => $config['alias']
             ),
             'parts' => array(
                 'select' => $select,
-                'from' => array($config['table'] . ' ' . $config['alias']),
+                'from' => array($from_part),
                 'leftjoin' => array(),
                 'innerjoin' => array(),
                 'where' => array(),
@@ -203,7 +212,16 @@ class Query {
         // ajout des alias aux champs sélectionnés
         $parts['select'] = $this->nameAliasesSelectedFields($parts['select']);
 
-        // construction de la requête SQL
+        return array($parts, $params, $config);
+    }
+
+    /**
+     * Convertit les parties de requête en requête.
+     *
+     * @param array $parts
+     * @return string
+     */
+    public function prepareSelectSql($parts) {
         $sql = sprintf('SELECT %1$s FROM %2$s', implode(', ', $parts['select']), implode(', ', $parts['from']));
         if (count($parts['leftjoin']) > 0)
             $sql .= ' ' . implode(' ', $parts['leftjoin']);
@@ -213,6 +231,22 @@ class Query {
             $sql .= ' WHERE ' . implode(' AND ', $parts['where']);
         if (count($parts['orderby']) > 0)
             $sql .= ' ORDER BY ' . implode(', ', $parts['orderby']);
+
+        return $sql;
+    }
+
+    /**
+     * Lance une requête SELECT sur la BD
+     *
+     * @param $config
+     * @return array
+     * @throws Exception
+     */
+    public function select($config) {
+        list($parts, $params, $config) = $this->prepareSelect($config);
+
+        // construction de la requête SQL
+        $sql = $this->prepareSelectSql($parts);
 
 
 //		echo $sql;
@@ -229,6 +263,13 @@ class Query {
         return $formatted;
     }
 
+    /**
+     * Suppression d'un ou plusieurs records
+     *
+     * @param array|int $config Une configuration de requête pour la suppression
+     * @param int $id Un identifiant
+     * @return int Le nombre de records supprimés
+     */
     public function delete($config, $id = null) {
         if (!is_array($config) && $id) {
             $sqlStmt = "DELETE FROM `" . $config . "` WHERE `id` = :id";
@@ -238,6 +279,11 @@ class Query {
         // tentative de récupération de l'alias principal
         $config = array_merge($config, $this->extractAlias($config['from']));
 
+        $from_part = $config['table'];
+        if ($this->container[$from_part]->escapeTablename) {
+            $from_part = "`" . $from_part . "`";
+        }
+
         // initialisation du tableau de données de la query
         $data = array(
             'flataliases' => array($config['table'] => $config['alias']),
@@ -246,7 +292,7 @@ class Query {
                 'alias' => $config['alias']
             ),
             'parts' => array(
-                'from' => array($config['table']),
+                'from' => array($from_part),
                 'leftjoin' => array(),
                 'innerjoin' => array(),
                 'where' => array(),
@@ -288,6 +334,12 @@ class Query {
 
         // on vire l'alias principal
         $sql = str_replace($data['base']['alias'].'.', '', $sql);
+
+//		echo $sql;
+//		echo '<pre>';
+//		print_r($params);
+//		echo '</pre>';
+//        die;
 
         return $this->container['db']->execute($sql, $params);
     }
@@ -434,7 +486,11 @@ class Query {
 
         // remplacement des alias sur les conditions
         foreach ($filter as &$query_part) {
-            $query_part = $this->aliaseIt($tablename, $alias, $query_part);
+            $query_part = $this->aliaseIt(
+                array($tablename, 'this'),
+                array($alias, $alias),
+                $query_part
+            );
         }
 
         // création du SQL
@@ -523,8 +579,6 @@ class Query {
         }
 
         // remplacement des alias sur les clause order by
-        $table_names = array();
-        $aliases_name = array();
         $aliases = $data['flataliases'][$tablename];
         if (!is_array($aliases)) {
             $aliases = array($aliases);
@@ -540,11 +594,13 @@ class Query {
         } else {
             $alias = $aliases[0];
         }
-        $table_names[] = $tablename;
-        $aliases_name[] = $alias;
 
         foreach ($filter as &$query_part) {
-            $query_part = $this->aliaseIt($table_names, $aliases_name, $query_part);
+            $query_part = $this->aliaseIt(
+                array($tablename, 'this'),
+                array($alias, $alias),
+                $query_part
+            );
         }
 
         // création du SQL et gestion de la direction
@@ -693,14 +749,18 @@ class Query {
         if (isset($default_options['on'])) {
 
             $filter_table = $joined_table;
-            if ($joined_alias)
+            if ($jointable_dao->escapeTablename) {
+                $filter_table = "`" . $filter_table . "`";
+            }
+            if ($joined_alias) {
                 $filter_table = $filter_table . ' ' . $joined_alias;
+            }
 
             // alias
             foreach ($default_options['on'] as &$query_part) {
                 $query_part = $this->aliaseIt(
-                    array($joined_table, $local_table),
-                    array($joined_alias, $local_alias),
+                    array($joined_table, $local_table, 'this'),
+                    array($joined_alias, $local_alias, $local_alias),
                     $query_part
                 );
             }
@@ -905,6 +965,11 @@ class Query {
         }
         $sqlStmt .= implode(', ', $updates) . ' WHERE `id` = :id';
 
+//        echo $sqlStmt;
+//        echo '<pre>';
+//        print_r($user_data);
+//        echo '</pre>';
+
         return $this->container['db']->execute($sqlStmt, $user_data);
     }
 
@@ -915,12 +980,14 @@ class Query {
                 $data['updated_at'] = date('Y-m-d H:i:s');
             }
             return $this->update($tableName, $data);
-        } else {
+        } elseif (count($data) > 0) {
             if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
                 $data['created_by'] = $this->container[$tableName]->getJournalizeUser();
                 $data['created_at'] = date('Y-m-d H:i:s');
             }
             return $this->insert($tableName, $data);
         }
+
+        return false;
     }
 }

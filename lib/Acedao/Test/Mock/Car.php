@@ -36,6 +36,11 @@ class Car implements Queriable {
                     'on' => array(
                         '[car].id = [car_equipment].car_id'
                     )
+                ),
+                'order' => array(
+                    'on' => array(
+                        '[this].id = [order].car_id'
+                    )
                 )
 
             ),

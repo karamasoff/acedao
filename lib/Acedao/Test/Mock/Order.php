@@ -1,11 +1,16 @@
 <?php
-namespace Acedao\Test\Mock\Car;
+namespace Acedao\Test\Mock;
+
 
 use Acedao\Brick\Dao;
 use Acedao\Queriable;
 
-class Category implements Queriable {
+class Order implements Queriable {
     use Dao;
+
+    public function construct() {
+        $this->escapeTablename = true;
+    }
 
 	/**
 	 * An array of field to select if nothing is provided in the query
@@ -13,7 +18,7 @@ class Category implements Queriable {
 	 * @return array
 	 */
 	public function getDefaultFields() {
-		return array('name', 'description', 'enabled');
+		return array('date', 'amount');
 	}
 
 	/**
@@ -29,18 +34,18 @@ class Category implements Queriable {
             'join' => array(
                 'car' => array(
                     'on' => array(
-                        '[car].category_id = [car_category].id'
+                        '[car].id = [this].car_id'
                     )
                 )
             ),
             'where' => array(
-                'enabled' => array(
-                    '[car_category].enabled = 1'
+                'id' => array(
+                    '[this].id = :id'
                 )
             ),
             'orderby' => array(
-                'name' => array(
-                    '[car_category].name :dir'
+                'date' => array(
+                    '[this].date :dir'
                 )
             )
         );

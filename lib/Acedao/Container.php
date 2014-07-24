@@ -2,7 +2,7 @@
 
 namespace Acedao;
 
-class Container extends \Pimple {
+class Container extends \Pimple\Container {
 
 	public function __construct(array $config)
 	{

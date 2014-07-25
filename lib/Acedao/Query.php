@@ -938,9 +938,10 @@ class Query {
      *
      * @param string $tableName
      * @param array $data
+     * @param bool $debug
      * @return int
      */
-    final private function insert($tableName, $data) {
+    final private function insert($tableName, $data, $debug = false) {
 
         $sqlStmt = "INSERT INTO `" . $tableName . "` ";
 
@@ -951,6 +952,13 @@ class Query {
         }
         $sqlStmt .= '(`' . implode('`,`', array_keys($data)) . '`) VALUES (' . implode(',', array_keys($user_data)) . ')';
 
+        if ($debug) {
+            echo $sqlStmt;
+            echo '<pre>';
+            print_r($user_data);
+            echo '</pre>';
+        }
+
         return $this->container['db']->execute($sqlStmt, $user_data);
     }
 
@@ -959,9 +967,10 @@ class Query {
      *
      * @param string $tableName
      * @param array $data
+     * @param bool $debug
      * @return int
      */
-    final private function update($tableName, $data) {
+    final private function update($tableName, $data, $debug = false) {
 
         $sqlStmt = "UPDATE `" . $tableName . "` SET ";
 
@@ -976,27 +985,41 @@ class Query {
         }
         $sqlStmt .= implode(', ', $updates) . ' WHERE `id` = :id';
 
-//        echo $sqlStmt;
-//        echo '<pre>';
-//        print_r($user_data);
-//        echo '</pre>';
+        if ($debug) {
+            echo $sqlStmt;
+            echo '<pre>';
+            print_r($user_data);
+            echo '</pre>';
+        }
 
-        return $this->container['db']->execute($sqlStmt, $user_data);
+        $result = $this->container['db']->execute($sqlStmt, $user_data);
+        if ($debug) {
+            var_dump($result);
+        }
+        return $result;
     }
 
-    final public function save($tableName, $data) {
+    /**
+     * Enregistrement d'un record
+     *
+     * @param string $tableName
+     * @param array $data Data to save into the table
+     * @param bool $debug
+     * @return bool|int
+     */
+    final public function save($tableName, $data, $debug = false) {
         if (array_key_exists('id', $data) && $data['id']) {
             if (in_array('Acedao\Brick\Journalizer', class_uses($this->getDependency($tableName)))) {
                 $data['updated_by'] = $this->getDependency($tableName)->getJournalizeUser();
                 $data['updated_at'] = date('Y-m-d H:i:s');
             }
-            return $this->update($tableName, $data);
+            return $this->update($tableName, $data, $debug);
         } elseif (count($data) > 0) {
             if (in_array('Acedao\Brick\Journalizer', class_uses($this->getDependency($tableName)))) {
                 $data['created_by'] = $this->getDependency($tableName)->getJournalizeUser();
                 $data['created_at'] = date('Y-m-d H:i:s');
             }
-            return $this->insert($tableName, $data);
+            return $this->insert($tableName, $data, $debug);
         }
 
         return false;

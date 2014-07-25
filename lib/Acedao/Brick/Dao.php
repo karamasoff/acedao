@@ -123,15 +123,29 @@ trait Dao {
      * Enregistrement des données d'un DAO
      *
      * @param array $data
+     * @param bool $debug
      * @return int
      */
-    public function save($data) {
+    public function save($data, $debug = false) {
         // filter $data against the allowed fields array
+        if ($debug) {
+            echo 'Données envoyées:';
+            echo '<pre>';
+            print_r($data);
+            echo '</pre>';
+        }
         $filtered_data = array_intersect_key($data, array_flip($this->getAllowedFields()));
         if (isset($filtered_data['id']) && !$filtered_data['id']) {
             unset($filtered_data['id']);
         }
-        return $this->query->save($this->t(), $filtered_data);
+
+        if ($debug) {
+            echo 'Données filtrées:';
+            echo '<pre>';
+            print_r($filtered_data);
+            echo '</pre>';
+        }
+        return $this->query->save($this->t(), $filtered_data, $debug);
     }
 
     /**

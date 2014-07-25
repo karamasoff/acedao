@@ -42,10 +42,11 @@ class Database {
         $this->init();
         try {
             $sth = $this->prepare($sql, $params);
-            if (preg_match('/insert/i', $sql))
+            if (preg_match('/insert/i', $sql)) {
                 return $this->insertId();
-            else
+            } else {
                 return $sth->rowCount();
+            }
         } catch (\PDOException $e) {
             throw new Exception("Query error: {$e->getMessage()} - {$sql}");
         }

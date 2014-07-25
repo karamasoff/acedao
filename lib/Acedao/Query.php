@@ -12,6 +12,7 @@ class Query {
      * @var Container
      */
     private $container;
+    private $classnames;
 
     protected $aliasesReferences = array();
     protected $aliasesTree = array();
@@ -20,6 +21,7 @@ class Query {
 
     public function __construct(Container $c) {
         $this->container = $c;
+        $this->classnames = array_flip($c['config']['tables']);
     }
 
     public function setAliasesReferences($refs) {
@@ -40,6 +42,18 @@ class Query {
 
     public function getAliasesReferences() {
         return $this->aliasesReferences;
+    }
+
+    /**
+     * @param $tablename
+     * @return Queriable
+     * @throws Exception
+     */
+    public function getDependency($tablename) {
+        if (!isset($this->classnames[$tablename])) {
+            throw new MissingDependencyException(sprintf("No dependendy found for provided table name [%s]", $tablename));
+        }
+        return $this->container[$this->classnames[$tablename]];
     }
 
     /**
@@ -73,13 +87,10 @@ class Query {
         if (!isset($config['table'])) {
             throw new MissingKeyException('$config' . " array does not contain a 'table' key. How can I be sure that your query will work ?");
         }
-        if (!isset($this->container[$config['table']])) {
-            throw new MissingDependencyException(sprintf("The table %s is not registered in the Container. Can't go on...", $config['table']));
-        }
 
-        $fields = isset($config['select']) ? $config['select'] : $this->container[$config['table']]->getDefaultFields();
-        in_array('Acedao\Brick\Journalizer', class_uses($this->container[$config['table']])) ?
-            $fields = array_merge($fields, $this->container[$config['table']]->getJournalizeFields()) : '';
+        $fields = isset($config['select']) ? $config['select'] : $this->getDependency($config['table'])->getDefaultFields();
+        in_array('Acedao\Brick\Journalizer', class_uses($this->getDependency($config['table']))) ?
+            $fields = array_merge($fields, $this->getDependency($config['table'])->getJournalizeFields()) : '';
 
         if (!in_array('id', $fields))
             array_unshift($fields, 'id');
@@ -155,7 +166,7 @@ class Query {
 
         // from part
         $from_table = $config['table'];
-        if ($this->container[$from_table]->escapeTablename) {
+        if ($this->getDependency($from_table)->escapeTablename) {
             $from_table = "`" . $from_table . "`";
         }
         $from_part = $from_table . ' ' . $config['alias'];
@@ -280,7 +291,7 @@ class Query {
         $config = array_merge($config, $this->extractAlias($config['from']));
 
         $from_part = $config['table'];
-        if ($this->container[$from_part]->escapeTablename) {
+        if ($this->getDependency($from_part)->escapeTablename) {
             $from_part = "`" . $from_part . "`";
         }
 
@@ -477,7 +488,7 @@ class Query {
         list($filtername, $tablename, $alias) = $this->extractFilterAliasAndTable($data, $filtername);
 
         // récupération du service
-        $service = $this->container[$tablename];
+        $service = $this->getDependency($tablename);
 
         // récupération du filtre
         if (false === ($filter = $this->retrieveFilter($service, 'where', $filtername))) {
@@ -568,7 +579,7 @@ class Query {
         list($filtername, $tablename, $alias) = $this->extractFilterAliasAndTable($data, $filtername);
 
         // récupération du service
-        $service = $this->container[$tablename];
+        $service = $this->getDependency($tablename);
 
         // récupération du filtre
         if (false === ($filter = $this->retrieveFilter($service, 'orderby', $filtername))) {
@@ -719,8 +730,8 @@ class Query {
         $local_alias = $caller['alias'];
 
         // load DAO services
-        $basetable_dao = $this->container[$local_table];
-        $jointable_dao = $this->container[$joined_table];
+        $basetable_dao = $this->container[$this->classnames[$local_table]];
+        $jointable_dao = $this->container[$this->classnames[$joined_table]];
 
         $basetable_joins = $basetable_dao->getFilters('join');
         $jointable_joins = $jointable_dao->getFilters('join');
@@ -975,14 +986,14 @@ class Query {
 
     final public function save($tableName, $data) {
         if (array_key_exists('id', $data) && $data['id']) {
-            if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
-                $data['updated_by'] = $this->container[$tableName]->getJournalizeUser();
+            if (in_array('Acedao\Brick\Journalizer', class_uses($this->getDependency($tableName)))) {
+                $data['updated_by'] = $this->getDependency($tableName)->getJournalizeUser();
                 $data['updated_at'] = date('Y-m-d H:i:s');
             }
             return $this->update($tableName, $data);
         } elseif (count($data) > 0) {
-            if (in_array('Acedao\Brick\Journalizer', class_uses($this->container[$tableName]))) {
-                $data['created_by'] = $this->container[$tableName]->getJournalizeUser();
+            if (in_array('Acedao\Brick\Journalizer', class_uses($this->getDependency($tableName)))) {
+                $data['created_by'] = $this->getDependency($tableName)->getJournalizeUser();
                 $data['created_at'] = date('Y-m-d H:i:s');
             }
             return $this->insert($tableName, $data);

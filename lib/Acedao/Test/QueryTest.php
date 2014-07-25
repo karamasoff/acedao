@@ -23,26 +23,18 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 
 	public function setUp() {
 
-		$container = new Container(array('mode' => 'strict'));
-
-		$container['car'] = function($c) {
-			return Factory::load('Acedao\Test\Mock\Car', $c, 'car');
-		};
-        $container['equipment'] = function($c) {
-            return Factory::load('Acedao\Test\Mock\Equipment', $c, 'equipment');
-        };
-        $container['car_equipment'] = function($c) {
-            return Factory::load('Acedao\Test\Mock\Car\Equipment', $c, 'car_equipment');
-        };
-        $container['car_category'] = function($c) {
-            return Factory::load('Acedao\Test\Mock\Car\Category', $c, 'car_category');
-        };
-        $container['buyer'] = function($c) {
-            return Factory::load('Acedao\Test\Mock\Buyer', $c, 'buyer');
-        };
-        $container['order'] = function($c) {
-            return Factory::load('Acedao\Test\Mock\Order', $c, 'order');
-        };
+		$container = new Container(array(
+            'mode' => 'strict',
+            'namespace' => 'Acedao\Test\Mock',
+            'tables' => array(
+                'Car' => 'car',
+                'Equipment' => 'equipment',
+                'Car\Equipment' => 'car_equipment',
+                'Car\Category' => 'car_category',
+                'Buyer' => 'buyer',
+                'Order' => 'order'
+            )
+        ));
 
 		$this->container = $container;
 		$this->query = $this->container['query'];
@@ -144,7 +136,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
      * @dataProvider providerRetrieveFilter
      */
     public function testRetrieveFilter($type, $name, $expected) {
-        $queriable = $this->container['car'];
+        $queriable = $this->container['Car'];
         $result = $this->query->retrieveFilter($queriable, $type, $name);
         $this->assertEquals($expected, $result);
     }

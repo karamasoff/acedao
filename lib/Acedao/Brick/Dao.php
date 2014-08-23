@@ -123,18 +123,33 @@ trait Dao {
      * Enregistrement des données d'un DAO
      *
      * @param array $data
+     * @param array $allowedFields Les champs à considérer (prend le pas sur la méthode getAllowedFields())
      * @param bool $debug
      * @return int
      */
-    public function save($data, $debug = false) {
-        // filter $data against the allowed fields array
+    public function save(array $data, array $allowedFields = null, $debug = false) {
         if ($debug) {
             echo 'Données envoyées:';
             echo '<pre>';
             print_r($data);
             echo '</pre>';
+
+            if ($allowedFields) {
+                echo 'Champs autorisés:';
+                echo '<pre>';
+                print_r($allowedFields);
+                echo '</pre>';
+            }
         }
-        $filtered_data = array_intersect_key($data, array_flip($this->getAllowedFields()));
+
+        // filter $data against the allowed fields array
+        if ($allowedFields && is_array($allowedFields) && count($allowedFields) > 0) {
+            $allowedFields = array_intersect($allowedFields, $this->getAllowedFields());
+        } else {
+            $allowedFields = $this->getAllowedFields();
+        }
+        $filtered_data = array_intersect_key($data, array_flip($allowedFields));
+
         if (isset($filtered_data['id']) && !$filtered_data['id']) {
             unset($filtered_data['id']);
         }

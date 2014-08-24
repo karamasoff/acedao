@@ -494,7 +494,7 @@ class Query {
      */
     public function applyConditions(&$data, $filtername, $options = null) {
         // création du SQL
-        $where_str = $this->getConditionString($data, $filtername);
+        $where_str = $this->getConditionString($data, $filtername, $options);
         $data['parts']['where'][] = $where_str;
 
         // traitement des paramètres
@@ -509,10 +509,21 @@ class Query {
      *
      * @param array $data
      * @param string $filtername
+     * @param array $options
+     * @param string $connector
      * @return string
      * @throws Exception
      */
-    private function getConditionString($data, $filtername) {
+    private function getConditionString($data, $filtername, $options, $connector = ' AND ') {
+
+        if ($filtername === 'or') {
+            $subfilters = array();
+            foreach ($options as $subfilter => $suboptions) {
+                $subfilters[] = $this->getConditionString($data, $subfilter, $suboptions);
+            }
+            return '(' . implode(' OR ', $subfilters) . ')';
+        }
+
         // détermination de la table sur laquelle le filtre doit s'appliquer
         list($filtername, $tablename, $alias) = $this->extractFilterAliasAndTable($data, $filtername);
 
@@ -533,7 +544,7 @@ class Query {
             );
         }
 
-        return implode(' AND ', $filter);
+        return implode($connector, $filter);
     }
 
     /**
@@ -802,7 +813,7 @@ class Query {
         if (isset($options['on']))  {
 
             foreach ($options['on'] as $filter => $value) {
-                $condition_string = $this->getConditionString($data, $filter);
+                $condition_string = $this->getConditionString($data, $filter, $value);
 
                 $this_condition_parameters = $this->mapFilterParametersNames($condition_string, $value);
                 $data['params'] = array_merge($data['params'], $this_condition_parameters);

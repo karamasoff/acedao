@@ -738,6 +738,11 @@ class Query {
 
         $default_options = $this->retrieveFilter($basetable_dao, 'join', $joined_table);
 
+        // provided options
+        if (is_string($options)) {
+            $options = ['name' => $options];
+        }
+
         // select
         if (isset($options['select'])) {
             $fields = $options['select'];

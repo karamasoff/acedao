@@ -250,23 +250,32 @@ class Query {
      * Lance une requête SELECT sur la BD
      *
      * @param $config
+     * @param bool $debug
      * @return array
      * @throws Exception
      */
-    public function select($config) {
+    public function select($config, $debug = false) {
         list($parts, $params, $config) = $this->prepareSelect($config);
 
         // construction de la requête SQL
         $sql = $this->prepareSelectSql($parts);
 
 
-//		echo $sql;
-//		echo '<pre>';
-//		print_r($params);
-//		echo '</pre>';
+        if ($debug) {
+            echo $sql;
+            echo '<pre>';
+            print_r($params);
+            echo '</pre>';
+        }
 
         // récupération des résultats
         $results = $this->container['db']->all($sql, $params);
+
+        if ($debug) {
+            echo '<pre>';
+            print_r($results);
+            echo '</pre>';
+        }
 
         // regroupement des résultats
         $formatted = $this->hydrate($results, $config);
@@ -484,6 +493,26 @@ class Query {
      * @throws Exception
      */
     public function applyConditions(&$data, $filtername, $options = null) {
+        // création du SQL
+        $where_str = $this->getConditionString($data, $filtername);
+        $data['parts']['where'][] = $where_str;
+
+        // traitement des paramètres
+        if (isset($options) && $options) {
+            $this_condition_parameters = $this->mapFilterParametersNames($where_str, $options);
+            $data['params'] = array_merge($data['params'], $this_condition_parameters);
+        }
+    }
+
+    /**
+     * Récupération d'une string SQL sur la base d'un filtre
+     *
+     * @param array $data
+     * @param string $filtername
+     * @return string
+     * @throws Exception
+     */
+    private function getConditionString($data, $filtername) {
         // détermination de la table sur laquelle le filtre doit s'appliquer
         list($filtername, $tablename, $alias) = $this->extractFilterAliasAndTable($data, $filtername);
 
@@ -504,15 +533,7 @@ class Query {
             );
         }
 
-        // création du SQL
-        $where_str = implode(' AND ', $filter);
-        $data['parts']['where'][] = $where_str;
-
-        // traitement des paramètres
-        if (isset($options) && $options) {
-            $this_condition_parameters = $this->mapFilterParametersNames($where_str, $options);
-            $data['params'] = array_merge($data['params'], $this_condition_parameters);
-        }
+        return implode(' AND ', $filter);
     }
 
     /**
@@ -730,13 +751,28 @@ class Query {
         $local_alias = $caller['alias'];
 
         // load DAO services
-        $basetable_dao = $this->container[$this->classnames[$local_table]];
-        $jointable_dao = $this->container[$this->classnames[$joined_table]];
+        $basetable_dao = $this->getDependency($local_table);
+        $jointable_dao = $this->getDependency($joined_table);
 
         $basetable_joins = $basetable_dao->getFilters('join');
         $jointable_joins = $jointable_dao->getFilters('join');
 
         $default_options = $this->retrieveFilter($basetable_dao, 'join', $joined_table);
+
+        // provided options
+        if (is_string($options)) {
+            $options = ['name' => $options];
+        }
+
+        // relation name
+        $relation_name = false;
+        if (isset($options['name'])) {
+            $relation_name = $options['name'];
+        }
+
+        // handle aliases libraries
+        $this->registerAlias($local_alias, $joined_alias, $joined_table, $basetable_joins, $jointable_joins, $relation_name);
+        $this->addFlatAlias($data['flataliases'], $joined_table, $joined_alias);
 
         // select
         if (isset($options['select'])) {
@@ -756,8 +792,30 @@ class Query {
         $data['parts']['select'] = array_merge($data['parts']['select'], $fields);
 
 
-        // leftjoin
+        // gestion des conditions du join
+        $conditions = array();
         if (isset($default_options['on'])) {
+            $conditions = $default_options['on'];
+        }
+
+        $custom_on = array();
+        if (isset($options['on']))  {
+
+            foreach ($options['on'] as $filter => $value) {
+                $condition_string = $this->getConditionString($data, $filter);
+
+                $this_condition_parameters = $this->mapFilterParametersNames($condition_string, $value);
+                $data['params'] = array_merge($data['params'], $this_condition_parameters);
+
+                $custom_on = array_merge($custom_on, array($condition_string));
+            }
+        }
+
+        $conditions = array_merge($conditions, $custom_on);
+
+
+        // leftjoin
+        if (count($conditions) > 0) {
 
             $filter_table = $joined_table;
             if ($jointable_dao->escapeTablename) {
@@ -768,7 +826,7 @@ class Query {
             }
 
             // alias
-            foreach ($default_options['on'] as &$query_part) {
+            foreach ($conditions as &$query_part) {
                 $query_part = $this->aliaseIt(
                     array($joined_table, $local_table, 'this'),
                     array($joined_alias, $local_alias, $local_alias),
@@ -777,20 +835,10 @@ class Query {
             }
 
             // add sql code
-            $leftjoin_str[] = sprintf('LEFT JOIN %s ON %s', $filter_table, implode(' AND ', $default_options['on']));
+            $leftjoin_str[] = sprintf('LEFT JOIN %s ON %s', $filter_table, implode(' AND ', $conditions));
             $data['parts']['leftjoin'] = array_merge($data['parts']['leftjoin'], $leftjoin_str);
             $data['parts']['select'][] = $local_alias . '.id';
             $data['parts']['select'][] = $joined_alias . '.id';
-
-            // relation name
-            $relation_name = false;
-            if (isset($options['name'])) {
-                $relation_name = $options['name'];
-            }
-
-            // handle aliases libraries
-            $this->registerAlias($local_alias, $joined_alias, $joined_table, $basetable_joins, $jointable_joins, $relation_name);
-            $this->addFlatAlias($data['flataliases'], $joined_table, $joined_alias);
         }
 
 

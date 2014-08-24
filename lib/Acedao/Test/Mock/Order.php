@@ -17,7 +17,7 @@ class Order implements Queriable {
 	 *
 	 * @return array
 	 */
-	public function getDefaultFields() {
+	public function getAllowedFields() {
 		return array('date', 'amount');
 	}
 

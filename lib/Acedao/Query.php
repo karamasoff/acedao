@@ -88,14 +88,7 @@ class Query {
             throw new MissingKeyException('$config' . " array does not contain a 'table' key. How can I be sure that your query will work ?");
         }
 
-        $fields = isset($config['select']) ? $config['select'] : $this->getDependency($config['table'])->getDefaultFields();
-        in_array('Acedao\Brick\Journalizer', class_uses($this->getDependency($config['table']))) ?
-            $fields = array_merge($fields, $this->getDependency($config['table'])->getJournalizeFields()) : '';
-
-        if (!in_array('id', $fields))
-            array_unshift($fields, 'id');
-
-        return $fields;
+        return $this->defineSelectedFields(array($config), $this->getDependency($config['table'])->getDefaultFields());
     }
 
     /**
@@ -747,6 +740,45 @@ class Query {
     }
 
     /**
+     * Récupération des champs à sélectionner dans la requête
+     *
+     * @param array $exclusiveOptions Les différents tableaux d'options possibles, mutuellement exclusifs
+     * @param array $defaultFields Les champs à prendre par défaut
+     * @return array
+     */
+    public function defineSelectedFields(array $exclusiveOptions, $defaultFields) {
+        $add_fields = array();
+        foreach ($exclusiveOptions as $options) {
+            // si on trouve une clé 'select', on prend ces champs et éventuellement, on y ajoute les champs mis de côté
+            // par le tableau d'options précédent (plus prioritaire).
+            if (isset($options['select']) && $options['select']) {
+                if (!is_array($options['select'])) {
+                    $options['select'] = array($options['select']);
+                }
+                $fields = array_merge($options['select'], $add_fields);
+                if (!in_array('id', $fields))
+                    array_unshift($fields, 'id');
+                return $fields;
+            }
+
+            // si on trouve une clé 'addselect', on garde ces champs de côté pour les ajouter à la liste de champ explicitement sélectionnée
+            if (isset($options['addselect']) && $options['addselect']) {
+                if (!is_array($options['addselect'])) {
+                    $options['addselect'] = array($options['addselect']);
+                }
+                $add_fields = array_merge($add_fields, $options['addselect']);
+            }
+        }
+
+        // si on est encore là, c'est qu'aucun des tableaux d'options prioritaire n'avait de select explicite.
+        // on retourne donc les champs par défaut auxquels on ajoute les éventuels champs supplémentaires demandés.
+        $fields = array_merge($defaultFields, $add_fields);
+        if (!in_array('id', $fields))
+            array_unshift($fields, 'id');
+        return $fields;
+    }
+
+    /**
      * Ajout d'une jointure à la query
      *
      * @param array $data Les données de la query
@@ -786,16 +818,10 @@ class Query {
         $this->addFlatAlias($data['flataliases'], $joined_table, $joined_alias);
 
         // select
-        if (isset($options['select'])) {
-            $fields = $options['select'];
-        } elseif (isset($default_options['select'])) {
-            $fields = $default_options['select'];
-        } else {
-            $fields = $jointable_dao->getDefaultFields();
-        }
-
-        if (!in_array('id', $fields))
-            array_unshift($fields, 'id');
+        $fields = $this->defineSelectedFields(array(
+            $options,
+            $default_options
+        ), $jointable_dao->getDefaultFields());
 
         // On applique l'alias aux champs à sélectionner et on plante le tout
         // dans les query parts...

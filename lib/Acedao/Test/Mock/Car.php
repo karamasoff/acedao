@@ -13,7 +13,7 @@ class Car implements Queriable {
 	 * @return array
 	 */
 	public function getAllowedFields() {
-		return array('name', 'brand', 'model', 'price', 'selldate', 'color');
+		return array('name', 'brand', 'model', 'price', 'selldate');
 	}
 
 	/**

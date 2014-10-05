@@ -14,6 +14,8 @@ class Query {
     private $container;
     private $classnames;
 
+    private $queryConfig;
+
     protected $aliasesReferences = array();
     protected $aliasesTree = array();
     protected $relationTypes = array();
@@ -83,11 +85,6 @@ class Query {
      * @throws Exception
      */
     public function getSelectedFields($config) {
-        // check if table is registered
-        if (!isset($config['table'])) {
-            throw new MissingKeyException('$config' . " array does not contain a 'table' key. How can I be sure that your query will work ?");
-        }
-
         return $this->defineSelectedFields(array($config), $this->getDependency($config['table'])->getDefaultFields());
     }
 
@@ -138,44 +135,18 @@ class Query {
         }, $fields);
     }
 
-    /**
-     * Build the query parts
-     *
-     * @param array $config
-     * @return array
-     * @throws Exception
-     */
-    public function prepareSelect($config) {
-        // S'il n'y a pas de table de départ, c'est mal parti pour faire un select...
-        if (!isset($config['from']))
-            throw new Exception('Array $parts needs a [from] entry.');
-
-        // tentative de récupération de l'alias principal
-        $config = array_merge($config, $this->extractAlias($config['from']));
-
-        // récupération des champs sélectionnés et aliasement de chacun
-        $select = $this->getSelectedFields($config);
-        $select = $this->aliaseSelectedFields($config['alias'], $select);
-
-        // from part
-        $from_table = $config['table'];
-        if ($this->getDependency($from_table)->escapeTablename) {
-            $from_table = "`" . $from_table . "`";
-        }
-        $from_part = $from_table . ' ' . $config['alias'];
-
-        // initialisation du tableau de données de la query
+    public function initDatas() {
         $data = array(
             'flataliases' => array(
-                $config['table'] => $config['alias']
+                $this->queryConfig['table'] => $this->queryConfig['alias']
             ),
             'base' => array(
-                'table' => $config['table'],
-                'alias' => $config['alias']
+                'table' => $this->queryConfig['table'],
+                'alias' => $this->queryConfig['alias']
             ),
             'parts' => array(
-                'select' => $select,
-                'from' => array($from_part),
+                'select' => '',
+                'from' => '',
                 'leftjoin' => array(),
                 'innerjoin' => array(),
                 'where' => array(),
@@ -185,6 +156,48 @@ class Query {
             ),
             'params' => array()
         );
+        return $data;
+    }
+
+    /**
+     * Petites modifications et enregisrement de la config de la requête dans l'objet
+     *
+     * @param array $config
+     * @throws Exception
+     */
+    public function prepareConfig(array $config) {
+        // S'il n'y a pas de table de départ, c'est mal parti pour faire un select...
+        if (!isset($config['from']))
+            throw new Exception('Array $parts needs a [from] entry.');
+
+        // tentative de récupération de l'alias principal
+        $table_info = $this->extractAlias($config['from']);
+        $this->queryConfig = array_merge($config, $table_info);
+    }
+
+    /**
+     * Build the query parts
+     *
+     * @return array
+     * @throws Exception
+     */
+    public function prepareSelect() {
+
+        $config = $this->queryConfig;
+
+        // initialisation du tableau de données de la query
+        $data = $this->initDatas();
+
+        // récupération des champs sélectionnés et aliasement de chacun
+        $select = $this->getSelectedFields($config);
+        $data['parts']['select'] = $this->aliaseSelectedFields($this->queryConfig['alias'], $select);
+
+        // from part
+        $from_table = $this->queryConfig['table'];
+        if ($this->getDependency($from_table)->escapeTablename) {
+            $from_table = "`" . $from_table . "`";
+        }
+        $data['parts']['from'] = $from_table . ' ' . $this->queryConfig['alias'];
 
         // données supplémentaires
         if (isset($config['join'])) {
@@ -208,7 +221,12 @@ class Query {
         }
 
         // au cas où des filtres auraient flanqué les mêmes parties de requêtes
-        $parts = array_map('array_unique', $data['parts']);
+        $parts = array_map(function ($part) {
+            if (is_array($part)) {
+                return array_unique($part);
+            }
+            return $part;
+        }, $data['parts']);
 
         // formattage des paramètres, s'il y en a...
         $params = $this->formatQueryParamsKeys($data['params']);
@@ -216,7 +234,7 @@ class Query {
         // ajout des alias aux champs sélectionnés
         $parts['select'] = $this->nameAliasesSelectedFields($parts['select']);
 
-        return array($parts, $params, $config);
+        return array($parts, $params, $this->queryConfig['alias']);
     }
 
     /**
@@ -226,7 +244,7 @@ class Query {
      * @return string
      */
     public function prepareSelectSql($parts) {
-        $sql = sprintf('SELECT %1$s FROM %2$s', implode(', ', $parts['select']), implode(', ', $parts['from']));
+        $sql = sprintf('SELECT %1$s FROM %2$s', implode(', ', $parts['select']), $parts['from']);
         if (count($parts['leftjoin']) > 0)
             $sql .= ' ' . implode(' ', $parts['leftjoin']);
         if (count($parts['innerjoin']) > 0)
@@ -248,7 +266,8 @@ class Query {
      * @throws Exception
      */
     public function select($config, $debug = false) {
-        list($parts, $params, $config) = $this->prepareSelect($config);
+        $this->prepareConfig($config);
+        list($parts, $params, $alias) = $this->prepareSelect();
 
         // construction de la requête SQL
         $sql = $this->prepareSelectSql($parts);
@@ -271,7 +290,7 @@ class Query {
         }
 
         // regroupement des résultats
-        $formatted = $this->hydrate($results, $config);
+        $formatted = $this->hydrate($results, $alias);
 
         return $formatted;
     }
@@ -361,10 +380,10 @@ class Query {
      * Formattage des résultats de la requêtes SQL
      *
      * @param array $results Resultset PDO
-     * @param array $config Configuration de la requête
+     * @param string $alias L'alias de la table principale
      * @return array
      */
-    public function hydrate($results, $config) {
+    public function hydrate($results, $alias) {
         $formatted = array();
         foreach ($results as $line) {
             $record = array();
@@ -372,7 +391,7 @@ class Query {
             $path_exclude = array();
             foreach ($line as $fieldname => $value) {
                 $t = explode('__', $fieldname);
-                if ($t[0] == $config['alias']) {
+                if ($t[0] == $alias) {
                     $record[$t[1]] = $value;
                 } else {
                     $path = $this->getPathAlias($t[0]);
@@ -507,9 +526,9 @@ class Query {
      * @return string
      * @throws Exception
      */
-    private function getConditionString($data, $filtername, $options, $connector = ' AND ') {
+    public function getConditionString($data, $filtername, $options = null, $connector = 'AND') {
 
-        if ($filtername === 'or') {
+        if ($filtername === 'or' && is_array($options)) {
             $subfilters = array();
             foreach ($options as $subfilter => $suboptions) {
                 $subfilters[] = $this->getConditionString($data, $subfilter, $suboptions);
@@ -537,7 +556,7 @@ class Query {
             );
         }
 
-        return implode($connector, $filter);
+        return implode(' ' . trim($connector) . ' ', $filter);
     }
 
     /**
@@ -801,6 +820,10 @@ class Query {
         $jointable_joins = $jointable_dao->getFilters('join');
 
         $default_options = $this->retrieveFilter($basetable_dao, 'join', $joined_table);
+
+        if ($default_options === false) {
+            throw new Exception(sprintf("Join filter [%s] not found in table [%s] dao definition.", $filtername, $local_table));
+        }
 
         // provided options
         if (is_string($options)) {

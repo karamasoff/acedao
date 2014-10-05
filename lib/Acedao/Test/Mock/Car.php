@@ -13,7 +13,7 @@ class Car implements Queriable {
 	 * @return array
 	 */
 	public function getAllowedFields() {
-		return array('name', 'brand', 'model', 'price', 'selldate');
+		return array('name', 'brand', 'model', 'price', 'selldate', 'buyer_id');
 	}
 
 	/**
@@ -27,14 +27,20 @@ class Car implements Queriable {
 	public function defineFilters() {
 		return array(
             'join' => array(
+                'buyer' => array(
+                    'on' => array(
+                        '[this].buyer_id = [buyer].id'
+                    )
+                ),
                 'car_category' => array(
                     'on' => array(
-                        '[car_category].id = [car].category_id'
+                        '[car_category].id = [this].category_id'
                     )
                 ),
                 'car_equipment' => array(
+                    'type' => 'many',
                     'on' => array(
-                        '[car].id = [car_equipment].car_id'
+                        '[this].id = [car_equipment].car_id'
                     )
                 ),
                 'order' => array(
@@ -52,7 +58,7 @@ class Car implements Queriable {
                     '[car].category_id = :categoryId'
                 ),
                 'color' => array(
-                    '[car].color = :color'
+                    '[this].color = :color'
                 )
             ),
             'orderby' => array(

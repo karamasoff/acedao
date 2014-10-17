@@ -695,37 +695,44 @@ class Query {
     }
 
     /**
-     * Fuionne 2 tableaux récursivement
+     * Fusionne 2 tableaux récursivement
      *
-     * @param $one
-     * @param $two
+     * @param array $one Tableau initial, qui va recevoir une nouvelle partie
+     * @param array $two Tableau dont la partie différente de $one doit être fusionnée dans $one
      */
     public function fusionRecords(&$one, $two) {
         foreach ($one as $fieldname => &$content) {
 
+            // on essaie de détecter les éléments de notre tableau qui sont des listes d'autres tableaux
             if ($content != $two[$fieldname] && is_array($content) && !isset($content['id'])) {
                 // combien y en a là-dedans ? Plus d'un ? Dans ce cas, faut trouver lequel
                 // ressemble le plus à notre $two[$fieldname]...
                 if (count($content) > 1) {
                     $found = false;
-                    foreach ($content as &$test_record) {
-                        if ($test_record['id'] != $two[$fieldname][0]['id']) {
+                    foreach ( $content as &$test_record ) {
+                        if ( $test_record['id'] != $two[ $fieldname ][0]['id'] ) {
                             continue;
                         }
 
                         $found = true;
-                        foreach ($test_record as $test_fieldname => &$test_content) {
-                            if (is_array($test_content)) {
-                                $this->fusionRecords($test_content, $two[$fieldname][0][$test_fieldname]);
+                        foreach ( $test_record as $test_fieldname => &$test_content ) {
+                            if ( is_array( $test_content ) ) {
+                                if (isset($test_content[0]['id']) && $test_content[0]['id'] != $two[$fieldname][0][ $test_fieldname ][0]['id']) {
+                                    $test_content = array_merge($test_content, $two[ $fieldname ][0][ $test_fieldname ]);
+                                } else {
+                                    $this->fusionRecords( $test_content, $two[ $fieldname ][0][ $test_fieldname ]);
+                                }
                             }
                         }
                     }
 
-                    if (!$found) {
-                        $content[] = $two[$fieldname][0];
+                    if ( ! $found ) {
+                        $content[] = $two[ $fieldname ][0];
                     }
-                } else {
+                } elseif (isset($content[0]['id']) && $content[0]['id'] != $two[$fieldname][0]['id']) {
                     $content = array_merge($content, $two[$fieldname]);
+                } else {
+                    $this->fusionRecords($content[0], $two[$fieldname][0]);
                 }
             }
         }

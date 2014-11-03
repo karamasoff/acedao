@@ -1,0 +1,13 @@
+.validations li {
+    list-style-type: none;
+    padding: 0;
+    margin: 8px 0;
+}
+
+header h1 a {
+    color: #fff;
+}
+
+header h1 a:hover {
+    color: #dff;
+}

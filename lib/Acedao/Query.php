@@ -732,7 +732,7 @@ class Query {
                 } elseif (isset($content[0]['id']) && $content[0]['id'] != $two[$fieldname][0]['id']) {
                     $content = array_merge($content, $two[$fieldname]);
                 } else {
-                    $this->fusionRecords($content[0], $two[$fieldname][0]);
+                    $this->fusionRecords(current($content), current($two[$fieldname]));
                 }
             }
         }

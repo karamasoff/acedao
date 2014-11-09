@@ -13,7 +13,7 @@ class Equipment implements Queriable {
 	 * @return array
 	 */
 	public function getAllowedFields() {
-		return array();
+		return array('name', 'description', 'price', 'enabled');
 	}
 
 	/**
@@ -38,8 +38,8 @@ class Equipment implements Queriable {
                     '[equipment].enabled = true'
                 ),
                 'price_between' => array(
-                    '[equipment].price >= :from',
-                    '[equipment].price <= :to'
+                    '[this].price >= :from',
+                    '[this].price <= :to'
                 )
             ),
             'orderby' => array(

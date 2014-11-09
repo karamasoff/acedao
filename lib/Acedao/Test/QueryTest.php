@@ -40,8 +40,27 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 		$this->query = $this->container['query'];
 
         // initialize some values
-		$this->initAliasesBaseForSearch();
+		$this->baseQuery();
 	}
+
+    public function baseQuery() {
+        $config = array(
+            'from' => 'car c',
+            'join' => array(
+                'buyer b' => 'Buyer',
+                'car_equipment ce' => array(
+                    'name' => 'CarEquipment',
+                    'join' => array(
+                        'equipment e' => 'Equipment'
+                    )
+                ),
+                'order o' => 'Order',
+                'car_category cc' => 'CarCategory'
+            )
+        );
+        $this->query->prepareConfig($config);
+        $this->query->prepareSelect();
+    }
 
 	/**
 	 * @param string $initial
@@ -84,21 +103,6 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 		$this->assertEquals($expected, $this->query->getSelectedFields($initialConfig));
 	}
 
-
-    public function testGetSelectedFieldsProvidedExceptionMissingKey() {
-        $expected = array('id', 'name');
-        $initial_config = array('select' => array('id', 'name'));
-        try {
-            $this->assertEquals($expected, $this->query->getSelectedFields($initial_config));
-        } catch (Exception\MissingKeyException $e) {
-            return;
-        } catch (Exception $e) {
-            $this->fail("MissingKeyException should have been raised. Another Exception was raised instead.");
-        }
-
-        $this->fail("MissingKeyException should have been raised.");
-    }
-
     public function testGetSelectedFieldsProvidedExceptionMissingDependency() {
         $expected = array('id', 'name');
         $initial_config = array('select' => array('id', 'name'), 'table' => 'blouarp');
@@ -117,9 +121,9 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 		return array(
 			array(array('select' => array('id', 'name'), 'table' => 'car'), array('id', 'name')),
 			array(array('select' => array('id', 'name'), 'table' => 'buyer'), array('id', 'name')), // pas besoin de la table si on sait les champs qu'on veut...
-            array(array('table' => 'car'), array('id', 'name', 'brand', 'model', 'price', 'selldate')), // pas de select fourni, prend les valeurs par défaut.
-            array(array('addselect' => array('color'), 'table' => 'car'), array('id', 'name', 'brand', 'model', 'price', 'selldate', 'color')), // ajout d'un champ aux champs par défaut
-            array(array('addselect' => 'color', 'table' => 'car'), array('id', 'name', 'brand', 'model', 'price', 'selldate', 'color')), // pareil, mais sans passer un tableau
+            array(array('table' => 'car'), array('id', 'name', 'brand', 'model', 'price', 'selldate', 'buyer_id')), // pas de select fourni, prend les valeurs par défaut.
+            array(array('addselect' => array('color'), 'table' => 'car'), array('id', 'name', 'brand', 'model', 'price', 'selldate', 'buyer_id', 'color')), // ajout d'un champ aux champs par défaut
+            array(array('addselect' => 'color', 'table' => 'car'), array('id', 'name', 'brand', 'model', 'price', 'selldate', 'buyer_id', 'color')), // pareil, mais sans passer un tableau
             array(array('select' => 'name', 'table' => 'car'), array('id', 'name')) // sélection d'un seul champ (l'id est tjs ajouté)
 		);
 	}
@@ -149,8 +153,14 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
         return array(
             array('join', 'car_category', array(
                 'on' => array(
-                    '[car_category].id = [car].category_id'
+                    '[car_category].id = [this].category_id'
                 )
+            )),
+            array('where', 'color', array(
+                '[this].color = :color'
+            )),
+            array('orderby', 'date_release', array(
+                '[car].date_release :dir'
             )),
             array('join', 'dummy_table', false)
         );
@@ -207,9 +217,9 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 	public function providerGetPathAlias() {
 		return array(
 			array(null, false),
-			array('s', false),
-			array('e', array('employee')),
-			array('p', array('employee', 'person')),
+			array('c', false),
+			array('e', array('CarEquipment', 'Equipment')),
+			array('b', array('Buyer')),
 		);
 	}
 
@@ -456,10 +466,6 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
         $this->assertEquals($expected, $result);
     }
 
-    public function providerGetSortDirection() {
-
-    }
-
     /**
      * @param $filtername
      * @param $expected
@@ -469,8 +475,8 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
     public function testExtractFilterAliasAndTable($filtername, $expected) {
         $data = array(
             'base' => array(
-                'alias' => 's',
-                'table' => 'sinister'
+                'alias' => 'c',
+                'table' => 'car'
             )
         );
 
@@ -481,8 +487,8 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
     public function testExtractFilterAliasAndTableExceptionAliasNotFound() {
         $data = array(
             'base' => array(
-                'alias' => 's',
-                'table' => 'sinister'
+                'alias' => 'c',
+                'table' => 'car'
             )
         );
         $filtername = 'blu.enabled'; // blu is not registered...
@@ -497,92 +503,85 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 
     public function providerExtractFilterAliasAndTable() {
         return array(
-            array('enabled', array('enabled', 'sinister', 's')),
-            array('s.enabled', array('enabled', 'sinister', 's')),
-            array('e.enabled', array('enabled', 'employee', 'e'))
+            array('enabled', array('enabled', 'car', 'c')),
+            array('c.color', array('color', 'car', 'c')),
+            array('e.enabled', array('enabled', 'equipment', 'e')),
+            array('e.fakefilter', array('fakefilter', 'equipment', 'e'))
         );
     }
 
     public function testEscapeTableNameInFromClause() {
-        list($parts, $params) = $this->query->prepareSelect(array(
+        $this->query->prepareConfig(array(
             'from' => 'order o'
         ));
+        list($parts, $params) = $this->query->prepareSelect();
 
-        $this->assertEquals($parts['from'][0], "`order` o");
+        $this->assertEquals($parts['from'], "`order` o");
     }
 
     public function testEscapeTableNameInJoinClause() {
-        list($parts, $params) = $this->query->prepareSelect(array(
+        $this->query->prepareConfig(array(
             'from' => 'car c',
             'join' => array(
                 'order o' => array('name' => 'Commandes')
             )
         ));
+        list($parts, $params) = $this->query->prepareSelect();
 
         $this->assertEquals($parts['leftjoin'][0], "LEFT JOIN `order` o ON c.id = o.car_id");
     }
 
+    /**
+     * @param $data
+     * @param $filtername
+     * @param $options
+     * @param $connector
+     * @param $expectedString
+     *
+     * @dataProvider providerTestGettingConditionsString
+     */
+    public function testGettingConditionStringFromFilter($data, $filtername, $options, $connector, $expectedString) {
+        $string = $this->query->getConditionString($data, $filtername, $options, $connector);
+        $this->assertEquals($string, $expectedString);
+    }
+
+    public function providerTestGettingConditionsString() {
+        return array(
+            array(
+                array(
+                    'base' => array(
+                        'alias' => 'c',
+                        'table' => 'car'
+                    )
+                ),
+                'e.price_between',
+                array(100, 1000),
+                'and',
+                'e.price >= :from and e.price <= :to'
+            ),
+            array(
+                array(
+                    'base' => array(
+                        'alias' => 'c',
+                        'table' => 'car'
+                    )
+                ),
+                'or',
+                array(
+                    'e.price_between' => array(100, 1000),
+                    'e.enabled' => true
+                ),
+                'and',
+                '(e.price >= :from AND e.price <= :to OR e.enabled = true)'
+            )
+        );
+    }
 
 
 
 /** ========== setting up the environment =================================== */
 
-    private function initAliasesBaseForSearch() {
-        $c = array(
-            'table' => 'client',
-            'relation' => 'client',
-            'type' => 'one',
-            'children' => array()
-        );
-        $p = array(
-            'table' => 'person',
-            'relation' => 'person',
-            'type' => 'one',
-            'children' => array()
-        );
-        $e = array(
-            'table' => 'employee',
-            'relation' => 'employee',
-            'type' => 'one',
-            'children' => array(
-                'c' => &$c,
-                'p' => &$p
-            )
-        );
-        $c['parent'] = &$e;
-        $p['parent'] = &$e;
 
-        $ss = array(
-            'table' => 'sinister_status',
-            'relation' => 'sinister_status',
-            'type' => 'one',
-            'children' => array()
-        );
-        $e['parent'] = null;
-        $ss['parent'] = null;
-
-        $base = array(
-            'e' => &$e,
-            'ss' => &$ss
-        );
-        $reference = array(
-            'c' => &$c,
-            'p' => &$p,
-            'e' => &$e,
-            'ss' => &$ss
-        );
-
-        $base_types = array(
-            'client' => 'one',
-            'person' => 'one',
-            'employee' => 'one',
-            'sinister_status' => 'one'
-        );
-
-        $this->query->setAliasesTree($base);
-        $this->query->setAliasesReferences($reference);
-        $this->query->setRelationTypes($base_types);
-    }
 
 /** ======== / setting up the environment =================================== */
 }

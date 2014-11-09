@@ -13,7 +13,7 @@ class Equipment implements Queriable {
 	 * @return array
 	 */
 	public function getAllowedFields() {
-		return array('name', 'description', 'price', 'enabled');
+		return array('car_id', 'equipment_id');
 	}
 
 	/**

@@ -290,7 +290,7 @@ class Query {
         }
 
         // regroupement des résultats
-        $formatted = $this->hydrate($results, $alias);
+        $formatted = $this->hydrate($results, $alias, $debug);
 
         return $formatted;
     }
@@ -381,9 +381,10 @@ class Query {
      *
      * @param array $results Resultset PDO
      * @param string $alias L'alias de la table principale
+     * @param bool $debug
      * @return array
      */
-    public function hydrate($results, $alias) {
+    public function hydrate($results, $alias, $debug = false) {
         $formatted = array();
         foreach ($results as $line) {
             $record = array();
@@ -426,11 +427,18 @@ class Query {
             // gestion des relations 1-n
             $this->manageRelationsType($record);
 
+            if ($debug) {
+                echo '<pre>';
+                print_r($record);
+                echo '</pre>';
+            }
+
+
             // fusion des records
             if (!isset($formatted[$record['id']])) {
                 $formatted[$record['id']] = $record;
             } else {
-                $this->fusionRecords($formatted[$record['id']], $record, null);
+                $this->fusionRecords($formatted[$record['id']], $record);
             }
         }
 
@@ -701,39 +709,32 @@ class Query {
      * @param array $two Tableau dont la partie différente de $one doit être fusionnée dans $one
      */
     public function fusionRecords(&$one, $two) {
-        foreach ($one as $fieldname => &$content) {
+        foreach ($one as $key => &$data) {
 
-            // on essaie de détecter les éléments de notre tableau qui sont des listes d'autres tableaux
-            if ($content != $two[$fieldname] && is_array($content) && !isset($content['id'])) {
-                // combien y en a là-dedans ? Plus d'un ? Dans ce cas, faut trouver lequel
-                // ressemble le plus à notre $two[$fieldname]...
-                if (count($content) > 1) {
-                    $found = false;
-                    foreach ( $content as &$test_record ) {
-                        if ( $test_record['id'] != $two[ $fieldname ][0]['id'] ) {
-                            continue;
-                        }
+            // si les 2 champs sont égaux, inutile de les fusionner
+            if ($two[$key] == $data) {
+                continue;
+            }
 
-                        $found = true;
-                        foreach ( $test_record as $test_fieldname => &$test_content ) {
-                            if ( is_array( $test_content ) ) {
-                                if (isset($test_content[0]['id']) && $test_content[0]['id'] != $two[$fieldname][0][ $test_fieldname ][0]['id']) {
-                                    $test_content = array_merge($test_content, $two[ $fieldname ][0][ $test_fieldname ]);
-                                } else {
-                                    $this->fusionRecords( $test_content, $two[ $fieldname ][0][ $test_fieldname ]);
-                                }
-                            }
-                        }
-                    }
+            // si le champ parcouru n'est pas un tableau, kestu veux qu'on fusionne ?
+            if (!is_array($data)) {
+                continue;
+            }
 
-                    if ( ! $found ) {
-                        $content[] = $two[ $fieldname ][0];
-                    }
-                } elseif (isset($content[0]['id']) && $content[0]['id'] != $two[$fieldname][0]['id']) {
-                    $content = array_merge($content, $two[$fieldname]);
-                } else {
-                    $this->fusionRecords(current($content), current($two[$fieldname]));
-                }
+            // si le tableau trouvé n'est pas une liste, pareil, on ne peut pas fusionner, on creuse...
+            if (isset($data['id'])) {
+                $this->fusionRecords($data, $two[$key]);
+                continue;
+            }
+
+            // si notre tableau contient un record qui n'est égal à aucun des records de notre tableau maître, c'est le moment de fusionner
+            $ids_test = array_column($data, 'id');
+            if (isset($two[$key][0]['id']) && !in_array($two[$key][0]['id'], $ids_test)) {
+                $data = array_merge($data, $two[$key]);
+
+                // sinon, on relance la machine
+            } else {
+                $this->fusionRecords($data, $two[$key]);
             }
         }
     }

@@ -732,9 +732,20 @@ class Query {
             if (isset($two[$key][0]['id']) && !in_array($two[$key][0]['id'], $ids_test)) {
                 $data = array_merge($data, $two[$key]);
 
-                // sinon, on relance la machine
+            // sinon, on relance la machine, pour autant que le record trouvé ne soit pas exactement le même que le record testé.
             } else {
-                $this->fusionRecords($data, $two[$key]);
+                // on trouve le record, on sait qu'il est là.
+                $item = null;
+                foreach ($data as $item) {
+                    if ($item['id'] == $two[$key][0]['id']) {
+                        break;
+                    }
+                }
+
+                // s'il est différent du record testé, on relance la récursion.
+                if ($item != $two[$key][0]) {
+                    $this->fusionRecords($data, $two[$key]);
+                }
             }
         }
     }

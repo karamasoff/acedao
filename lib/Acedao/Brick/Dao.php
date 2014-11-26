@@ -164,6 +164,17 @@ trait Dao {
     }
 
     /**
+     * Requête select
+     *
+     * @param  array   $config Données du select
+     * @param  boolean $debug
+     * @return mixed
+     */
+    public function select(array $config, $debug = false) {
+        return $this->query->select($config, $debug);
+    }
+
+    /**
      * Requête de suppression d'un ou plusieurs records
      *
      * @param array|int $userConfig
@@ -196,4 +207,4 @@ trait Dao {
     public function rollback() {
         return $this->container['db']->rollback();
     }
-} 
+}

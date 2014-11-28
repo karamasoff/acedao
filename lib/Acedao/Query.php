@@ -438,7 +438,7 @@ class Query {
             if (!isset($formatted[$record['id']])) {
                 $formatted[$record['id']] = $record;
             } else {
-                $this->fusionRecords($formatted[$record['id']], $record);
+                $formatted[$record['id']] = $this->fusionRecords($formatted[$record['id']], $record);
             }
         }
 
@@ -707,47 +707,51 @@ class Query {
      *
      * @param array $one Tableau initial, qui va recevoir une nouvelle partie
      * @param array $two Tableau dont la partie différente de $one doit être fusionnée dans $one
+     * @return array
      */
-    public function fusionRecords(&$one, $two) {
+    public function fusionRecords(array $one, array $two) {
+        // if records/lists are equals, no need to merge
+        if ($one == $two) {
+            return $one;
+        }
+
+        // if comparing lists, check if the record from $two is in $one list
+        // if not -> merge
+        // if yes -> recurse on the records with same id.
+        if (!isset($one['id']) && !isset($two['id'])) {
+            $ids_one = array_column($one, 'id');
+            $ids_two = array_column($two, 'id');
+            $intersection = array_intersect($ids_one, $ids_two);
+            if (count($intersection) == 0) {
+                return array_merge($one, $two);
+            } else {
+                $good_id = array_shift($intersection);
+                $pos = array_search($good_id, $ids_one);
+                $one[$pos] = $this->fusionRecords($one[$pos], $two[0]);
+                return $one;
+            }
+        }
+
+        // if comparing records, iterate through fields
         foreach ($one as $key => &$data) {
 
-            // si les 2 champs sont égaux, inutile de les fusionner
-            if ($two[$key] == $data) {
-                continue;
+            // if fields are equals, go on
+            if (in_array($key, array_keys($two))) {
+                if ($two[$key] == $data) {
+                    continue;
+                }
             }
 
-            // si le champ parcouru n'est pas un tableau, kestu veux qu'on fusionne ?
+            // if field is not a table, go on
             if (!is_array($data)) {
                 continue;
             }
 
-            // si le tableau trouvé n'est pas une liste, pareil, on ne peut pas fusionner, on creuse...
-            if (isset($data['id'])) {
-                $this->fusionRecords($data, $two[$key]);
-                continue;
-            }
-
-            // si notre tableau contient un record qui n'est égal à aucun des records de notre tableau maître, c'est le moment de fusionner
-            $ids_test = array_column($data, 'id');
-            if (isset($two[$key][0]['id']) && !in_array($two[$key][0]['id'], $ids_test)) {
-                $data = array_merge($data, $two[$key]);
-
-            // sinon, on relance la machine, pour autant que le record trouvé ne soit pas exactement le même que le record testé.
-            } else {
-                // on trouve le record, on sait qu'il est là.
-                $item = null;
-                foreach ($data as $item) {
-                    if ($item['id'] == $two[$key][0]['id']) {
-                        break;
-                    }
-                }
-
-                // s'il est différent du record testé, on relance la récursion.
-                if ($item != $two[$key][0]) {
-                    $this->fusionRecords($data, $two[$key]);
-                }
-            }
+            // if arrived here, recurse.
+            $data = $this->fusionRecords($data, $two[$key]);
         }
+
+        return $one;
     }
 
     /**

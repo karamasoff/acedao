@@ -10,10 +10,8 @@ AceDAO
 
 ----------------------------------------
 
-AceDAO is a query helper for PHP, released under the new BSD license (code
+AceDAO is a database query helper for PHP, released under the new BSD license (code
 and documentation).
-
-**CAUTION: This package is still not documented and in early development state...**
 
 ----------------------------------------
 
@@ -21,7 +19,8 @@ and documentation).
 
 AceDAO provides some reusable code to query databases and is build on top of PDO.
 
-Let's query some cars. I want the red cars, with buyer information, sold in the past two month, ordered by price (bigger first).
+Let's query some cars.  
+I want the red cars, with buyer information, sold in the past two months, ordered by price (bigger first).
 
 ```php
 // configure the query
@@ -86,20 +85,20 @@ You want the cars with the buyer information, you'll get something like this:
     )
 
     [2] => Array
+        (
+            [id] => 2
+            [brand] => Renault
+            [model] => 4L
+            [price] => 3500
+            [color] => violet
+            [buyer] => Array
                 (
-                    [id] => 2
-                    [brand] => Renault
-                    [model] => 4L
-                    [price] => 3500
-                    [color] => violet
-                    [buyer] => Array
-                        (
-                            [id] => 12
-                            [name] => Labrocante Louis
-                        )
-
+                    [id] => 12
+                    [name] => Labrocante Louis
                 )
-            )
+
+        )
+    )
  </pre>
  ```
 
@@ -109,8 +108,9 @@ You want the cars with the buyer information, you'll get something like this:
 
 Read documentation on the different steps to party with it.
 
+0. [Prerequisites](prereq.html) - Before starting, read this.
 1. [Queriable classes](queriable.html) - First you need to define on which table you want to run queries
-2. [Dependancy injection](di.html) - AceDAO provide a simple yet powerful dependancy injection based on [Pimple][1].
+2. [Dependency injection](di.html) - AceDAO provide a simple yet powerful dependency injection based on [Pimple][1].
 3. [Query configuration](query.html) - Well, I've my Queriable class, registered in my DI Container. I want to query !!
 4. [Bootstrapping](bootstrap.html) - Ok, and howto bootstrap all that stuffs ?
 

@@ -2,7 +2,9 @@
 layout: default
 ---
 
-AceDAO - Queriable classes
+[<< BACK - Prerequisites](prereq.html)
+
+1. Queriable classes
 ========================================
 
 To query a table, you'll have to create a PHP class that implements the Acedao\Queriable interface.

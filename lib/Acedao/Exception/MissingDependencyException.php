@@ -1,7 +1,7 @@
 <?php
-namespace Acedao\Exception;
+namespace Voilab\Acedao\Exception;
 
-use Acedao\Exception;
+use Voilab\Acedao\Exception;
 
 class MissingDependencyException extends Exception {
 

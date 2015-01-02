@@ -1,10 +1,8 @@
 <?php
-namespace Acedao\Brick;
+namespace Voilab\Acedao\Brick;
 
 
-use Acedao\Container;
-use Acedao\Exception\MissingKeyException;
-use Acedao\Query;
+use Voilab\Acedao\Exception\MissingKeyException;
 
 trait Dao {
 
@@ -38,21 +36,6 @@ trait Dao {
      */
     protected $container;
 
-    /**
-     * Constructeur spécialisé pour chaque DAO (à surcharger)
-     */
-    public function construct() {
-    }
-
-    /**
-     * Initialisateur du DAO (automatiquement appelé dans la Factory)
-     *
-     * @param Container $container
-     */
-    public function init(Container $container) {
-        $this->container = $container;
-        $this->query = $container['query'];
-    }
 
     public function setTableName($tablename) {
         $this->tablename = $tablename;

@@ -1,10 +1,10 @@
 <?php
 
-namespace Acedao;
+namespace Voilab\Acedao;
 
-use Acedao\Exception\MissingDependencyException;
-use Acedao\Exception\MissingKeyException;
-use Acedao\Exception\WrongParameterException;
+use Voilab\Acedao\Exception\MissingDependencyException;
+use Voilab\Acedao\Exception\MissingKeyException;
+use Voilab\Acedao\Exception\WrongParameterException;
 
 class Query {
 
@@ -21,7 +21,7 @@ class Query {
     protected $relationTableNames = array();
 
     /**
-     * @Inject({"Acedao\Database","acedao.config","acedao.tables"})
+     * @Inject({"Voilab\Acedao\Database","acedao.config","acedao.tables"})
      * @param Database $db
      * @param array $config
      * @param array $tables

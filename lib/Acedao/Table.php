@@ -1,7 +1,7 @@
 <?php
-namespace Acedao;
+namespace Voilab\Acedao;
 
-use Acedao\Brick\Dao;
+use Voilab\Acedao\Brick\Dao;
 
 class Table implements Queriable {
     use Dao;

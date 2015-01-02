@@ -1,23 +1,18 @@
 <?php
 
-namespace Acedao\Test;
+namespace Voilab\Acedao\Test;
 
-use Acedao\Container;
-use Acedao\Exception;
-use Acedao\Factory;
-use Acedao\Test\Mock\Buyer;
-use Acedao\Test\Mock\Car;
-use Acedao\Test\Mock\Equipment;
+use Voilab\Acedao\Exception;
 
 class QueryTest extends \PHPUnit_Framework_TestCase {
 
 	/**
-	 * @var Container
+	 * @var \DI\Container
 	 */
 	public $container;
 
 	/**
-	 * @var \Acedao\Query
+	 * @var \Voilab\Acedao\Query
 	 */
 	public $query;
 
@@ -26,7 +21,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 		global $container;
 
 		$this->container = $container;
-		$this->query = $this->container->get('Acedao\Query');
+		$this->query = $this->container->get('Voilab\Acedao\Query');
 
         // initialize some values
 		$this->baseQuery();

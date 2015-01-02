@@ -1,6 +1,6 @@
 <?php
 
-namespace Acedao;
+namespace Voilab\Acedao;
 
 
 interface Queriable {
@@ -36,14 +36,6 @@ interface Queriable {
      * @return mixed
      */
     public function t($suffix = null);
-
-    /**
-     * Initialisation method used inside the Dao trait
-     *
-     * @param Container $c
-     * @return void
-     */
-    public function init(Container $c);
 
     /**
      * An array of all the authorized fields that can be used in a query on this table

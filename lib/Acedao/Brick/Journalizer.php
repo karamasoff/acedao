@@ -1,5 +1,5 @@
 <?php
-namespace Acedao\Brick;
+namespace Voilab\Acedao\Brick;
 
 trait Journalizer {
 

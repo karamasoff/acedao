@@ -20,7 +20,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Voilab\\Acedao\\": "lib/"
+            "Voilab\\Acedao\\": "lib/Acedao"
         }
     },
     "extra": {

@@ -1,5 +1,5 @@
 <?php
-namespace Acedao;
+namespace Voilab\Acedao;
 
 
 class Exception extends \Exception {

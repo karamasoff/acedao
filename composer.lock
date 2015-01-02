@@ -4,20 +4,20 @@
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "2e49694ee7c378b1d7640337093c41e3",
+    "hash": "35c86dfcffbd03969485d150bde2896f",
     "packages": [
         {
             "name": "container-interop/container-interop",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/container-interop/container-interop.git",
-                "reference": "b4274c871bfd1ae8d8e527ba11734f4df1573e48"
+                "reference": "fc08354828f8fd3245f77a66b9e23a6bca48297e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/container-interop/container-interop/zipball/b4274c871bfd1ae8d8e527ba11734f4df1573e48",
-                "reference": "b4274c871bfd1ae8d8e527ba11734f4df1573e48",
+                "url": "https://api.github.com/repos/container-interop/container-interop/zipball/fc08354828f8fd3245f77a66b9e23a6bca48297e",
+                "reference": "fc08354828f8fd3245f77a66b9e23a6bca48297e",
                 "shasum": ""
             },
             "type": "library",
@@ -31,7 +31,7 @@
                 "MIT"
             ],
             "description": "Promoting the interoperability of container objects (DIC, SL, etc.)",
-            "time": "2014-03-16 14:50:05"
+            "time": "2014-12-30 15:22:37"
         },
         {
             "name": "doctrine/annotations",

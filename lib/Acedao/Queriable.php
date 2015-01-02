@@ -9,17 +9,33 @@ interface Queriable {
      * Set the table name
      *
      * @param string $tablename
-     * @return void
+     * @return Queriable
      */
     public function setTableName($tablename);
 
     /**
+     * Set the table name
+     *
+     * @param string $alias
+     * @return Queriable
+     */
+    public function setAlias($alias);
+
+    /**
+     * Set the DAO filters
+     *
+     * @param array $filters
+     * @return Queriable
+     */
+    public function setFilters(array $filters);
+
+    /**
      * Get the table name
      *
-     * @param string $alias The table alias
+     * @param string $suffix The table alias suffix
      * @return mixed
      */
-    public function t($alias = null);
+    public function t($suffix = null);
 
     /**
      * Initialisation method used inside the Dao trait
@@ -36,25 +52,6 @@ interface Queriable {
     public function getAllowedFields();
 
     /**
-     * Defines all the query possibilities of the Queriable object (a table)
-     * - join
-     * - where
-     * - orderby
-     *
-     * @return array
-     */
-    public function defineFilters();
-
-    /**
-     * This methods will be defined in the Dao traits
-     * It takes the return of defineFilters and put it in a $filters property also
-     * defined in the trait.
-     *
-     * @return void
-     */
-    public function loadFilters();
-
-    /**
      * This methods will be defined in the Dao traits
      * Get the defined query possibilities of the Queriable object
      * or a subset of it.
@@ -63,4 +60,31 @@ interface Queriable {
      * @return array
      */
     public function getFilters($key = null);
+
+    /**
+     * Select query
+     *
+     * @param array $config
+     * @param bool $debug
+     * @return array
+     */
+    public function select(array $config, $debug = false);
+
+    /**
+     * Delete query
+     *
+     * @param array|int $config If int is passed, the record with the relative ID will be deleted, if array is passed, will be used as the select() method $config array
+     * @return @return int Number of deleted records
+     */
+    public function delete($config);
+
+    /**
+     * Insert/Update query
+     *
+     * @param array $data Associative array representing data to save
+     * @param array $allowedFields Overrides getAllowedFields() returned array
+     * @param bool $debug Display some debugging informations
+     * @return int If inserted -> last insert id. If updated, number of udpated rows.
+     */
+    public function save(array $data, array $allowedFields = null, $debug = false);
 }

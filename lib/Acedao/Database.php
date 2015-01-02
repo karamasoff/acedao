@@ -20,14 +20,17 @@ class Database {
     /**
      * Constructor
      *
+     * @Inject({"acedao.db"})
      * @param array $config
+     *
      * @throws Exception
      */
-    public function __construct($config = array()) {
+    public function __construct(array $config = []) {
         $this->config = array_merge($this->config, $config);
         if (!$this->config['adapter'] || !$this->config['host'] || !$this->config['dbname'] || !$this->config['user']) {
             throw new Exception("Missing config parameters");
         }
+        $this->initDriver();
     }
 
     /**
@@ -39,7 +42,6 @@ class Database {
      * @throws Exception
      */
     public function execute($sql = '', $params = array()) {
-        $this->init();
         try {
             $sth = $this->prepare($sql, $params);
             if (preg_match('/insert/i', $sql)) {
@@ -53,7 +55,6 @@ class Database {
     }
 
     public function insertId() {
-        $this->init();
         $id = $this->dblol->lastInsertId();
         if ($id > 0) {
             return $id;
@@ -62,7 +63,6 @@ class Database {
     }
 
     public function all($sql = false, $params = array()) {
-        $this->init();
         try {
             $sth = $this->prepare($sql, $params);
             return $sth->fetchAll(\PDO::FETCH_ASSOC);
@@ -72,7 +72,6 @@ class Database {
     }
 
     public function one($sql = false, $params = array()) {
-        $this->init();
         try {
             $sth = $this->prepare($sql, $params);
             return $sth->fetch(\PDO::FETCH_ASSOC);
@@ -103,7 +102,7 @@ class Database {
         }
     }
 
-    private function init() {
+    private function initDriver() {
         if ($this->dblol)
             return;
 
@@ -111,7 +110,7 @@ class Database {
             $this->dblol = new \PDO($this->config['adapter'] . ':host=' . $this->config['host'] . ';dbname=' . $this->config['dbname'], $this->config['user'], $this->config['pass']);
             $this->dblol->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         } catch (Exception $e) {
-            throw new Exception('Could not connect to database');
+            throw new Exception('Could not connect to database. Message: ' . $e->getMessage());
         }
     }
 }

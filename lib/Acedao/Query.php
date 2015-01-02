@@ -8,11 +8,10 @@ use Acedao\Exception\WrongParameterException;
 
 class Query {
 
-    /**
-     * @var Container
-     */
-    private $container;
-    private $classnames;
+    private $db;
+    private $dependencies = [];
+
+    private $config;
 
     private $queryConfig;
 
@@ -21,9 +20,28 @@ class Query {
     protected $relationTypes = array();
     protected $relationTableNames = array();
 
-    public function __construct(Container $c) {
-        $this->container = $c;
-        $this->classnames = array_flip($c['config']['tables']);
+    /**
+     * @Inject({"Acedao\Database","acedao.config","acedao.tables"})
+     * @param Database $db
+     * @param array $config
+     * @param array $tables
+     */
+    public function __construct(Database $db, array $config, array $tables) {
+        $this->setDb($db);
+        $this->setConfig($config);
+        $this->dependencies = $tables;
+    }
+
+    public function setDependency($classname, array $tableconfig) {
+        $this->dependencies[$classname] = $tableconfig;
+    }
+
+    public function setConfig(array $config) {
+        $this->config = $config;
+    }
+
+    public function setDb(Database $db) {
+        $this->db = $db;
     }
 
     public function setAliasesReferences($refs) {
@@ -48,14 +66,14 @@ class Query {
 
     /**
      * @param $tablename
-     * @return Queriable
+     * @return array
      * @throws Exception
      */
     public function getDependency($tablename) {
-        if (!isset($this->classnames[$tablename])) {
+        if (!isset($this->dependencies[$tablename])) {
             throw new MissingDependencyException(sprintf("No dependendy found for provided table name [%s]", $tablename));
         }
-        return $this->container[$this->classnames[$tablename]];
+        return $this->dependencies[$tablename];
     }
 
     /**
@@ -85,7 +103,7 @@ class Query {
      * @throws Exception
      */
     public function getSelectedFields($config) {
-        return $this->defineSelectedFields(array($config), $this->getDependency($config['table'])->getDefaultFields());
+        return $this->defineSelectedFields(array($config), $this->getDependency($config['table'])['fields']);
     }
 
     /**
@@ -194,7 +212,8 @@ class Query {
 
         // from part
         $from_table = $this->queryConfig['table'];
-        if ($this->getDependency($from_table)->escapeTablename) {
+        $from_table_config = $this->getDependency($from_table);
+        if (isset($from_table_config['escapeTablename']) && $from_table_config['escapeTablename']) {
             $from_table = "`" . $from_table . "`";
         }
         $data['parts']['from'] = $from_table . ' ' . $this->queryConfig['alias'];
@@ -281,7 +300,7 @@ class Query {
         }
 
         // récupération des résultats
-        $results = $this->container['db']->all($sql, $params);
+        $results = $this->db->all($sql, $params);
 
         if ($debug) {
             echo '<pre>';
@@ -305,14 +324,15 @@ class Query {
     public function delete($config, $id = null) {
         if (!is_array($config) && $id) {
             $sqlStmt = "DELETE FROM `" . $config . "` WHERE `id` = :id";
-            return $this->container['db']->execute($sqlStmt, array(':id' => $id));
+            return $this->db->execute($sqlStmt, array(':id' => $id));
         }
 
         // tentative de récupération de l'alias principal
         $config = array_merge($config, $this->extractAlias($config['from']));
 
         $from_part = $config['table'];
-        if ($this->getDependency($from_part)->escapeTablename) {
+        $from_part_config = $this->getDependency($from_part);
+        if (isset($from_part_config['escapeTablename']) && $from_part_config['escapeTablename']) {
             $from_part = "`" . $from_part . "`";
         }
 
@@ -373,7 +393,7 @@ class Query {
 //		echo '</pre>';
 //        die;
 
-        return $this->container['db']->execute($sql, $params);
+        return $this->db->execute($sql, $params);
     }
 
     /**
@@ -490,13 +510,16 @@ class Query {
     /**
      * Récupération de la config du filtre
      *
-     * @param Queriable $queriable
+     * @param array $queriableConfig
      * @param string $type Le type de filtre (where, orderby)
      * @param string $filtername Le nom du filtre
      * @return bool|array
      */
-    public function retrieveFilter(Queriable $queriable, $type, $filtername) {
-        $conditions = $queriable->getFilters($type);
+    public function retrieveFilter(array $queriableConfig, $type, $filtername = null) {
+        $conditions = isset($queriableConfig['filters'][$type]) ? $queriableConfig['filters'][$type] : [];
+        if ($filtername === null) {
+            return $conditions;
+        }
         if (isset($conditions[$filtername])) {
             return $conditions[$filtername];
         }
@@ -635,7 +658,7 @@ class Query {
 
         // récupération du filtre
         if (false === ($filter = $this->retrieveFilter($service, 'orderby', $filtername))) {
-            if ($this->container['config']['mode'] == 'strict') {
+            if ($this->config['mode'] == 'strict') {
                 throw new Exception(sprintf("Asked filter [%s] does not exist on table [%s]", $filtername, $tablename));
             }
             return;
@@ -693,7 +716,7 @@ class Query {
             if (in_array($options, array('asc', 'desc'))) {
                 return $options;
             } else {
-                if ($this->container['config']['mode'] == 'strict') {
+                if ($this->config['mode'] == 'strict') {
                     throw new Exception(sprintf("Provided options in 'orderby' filter [%s] is not recognized. Use 'asc' or 'desc'.", $options));
                 } else {
                     return 'asc';
@@ -839,8 +862,8 @@ class Query {
         $basetable_dao = $this->getDependency($local_table);
         $jointable_dao = $this->getDependency($joined_table);
 
-        $basetable_joins = $basetable_dao->getFilters('join');
-        $jointable_joins = $jointable_dao->getFilters('join');
+        $basetable_joins = $this->retrieveFilter($basetable_dao, 'join');
+        $jointable_joins = $this->retrieveFilter($jointable_dao, 'join');
 
         $default_options = $this->retrieveFilter($basetable_dao, 'join', $joined_table);
 
@@ -867,7 +890,7 @@ class Query {
         $fields = $this->defineSelectedFields(array(
             $options,
             $default_options
-        ), $jointable_dao->getDefaultFields());
+        ), $jointable_dao['fields']);
 
         // On applique l'alias aux champs à sélectionner et on plante le tout
         // dans les query parts...
@@ -901,7 +924,7 @@ class Query {
         if (count($conditions) > 0) {
 
             $filter_table = $joined_table;
-            if ($jointable_dao->escapeTablename) {
+            if (isset($jointable_dao['escapeTablename']) && $jointable_dao['escapeTablename']) {
                 $filter_table = "`" . $filter_table . "`";
             }
             if ($joined_alias) {
@@ -1090,7 +1113,7 @@ class Query {
             echo '</pre>';
         }
 
-        return $this->container['db']->execute($sqlStmt, $user_data);
+        return $this->db->execute($sqlStmt, $user_data);
     }
 
     /**
@@ -1123,7 +1146,7 @@ class Query {
             echo '</pre>';
         }
 
-        $result = $this->container['db']->execute($sqlStmt, $user_data);
+        $result = $this->db->execute($sqlStmt, $user_data);
         if ($debug) {
             var_dump($result);
         }

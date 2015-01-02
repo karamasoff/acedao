@@ -4,6 +4,7 @@ namespace Acedao\Brick;
 
 use Acedao\Container;
 use Acedao\Exception\MissingKeyException;
+use Acedao\Query;
 
 trait Dao {
 
@@ -16,6 +17,11 @@ trait Dao {
      * @var string Le nom de la table
      */
     public $tablename;
+
+    /**
+     * @var string L'alias de la table
+     */
+    public $alias;
 
     /**
      * @var bool Faut-il échapper le nom de la table ?
@@ -50,23 +56,17 @@ trait Dao {
 
     public function setTableName($tablename) {
         $this->tablename = $tablename;
+        return $this;
     }
 
-    public function loadFilters() {
-        $this->filters = $this->defineFilters();
+    public function setAlias($alias) {
+        $this->alias = $alias;
+        return $this;
     }
 
-    /**
-     * Définition des filtres par défaut pour ce DAO (aucun, quoi).
-     *
-     * @return array
-     */
-    public function defineFilters() {
-        return array(
-            'join' => array(),
-            'where' => array(),
-            'orderby' => array()
-        );
+    public function setFilters(array $filters) {
+        $this->filters = $filters;
+        return $this;
     }
 
     /**
@@ -108,14 +108,15 @@ trait Dao {
     /**
      * Récupération du nom de la table
      *
-     * @param string $alias
+     * @param string $suffix Un petit bout de plus pour l'alias
      * @return string
      */
-    public function t($alias = null) {
+    public function t($suffix = '') {
         $tablename = $this->tablename;
-        if ($alias) {
-            $tablename .= ' ' . $alias;
+        if (!$this->alias) {
+            $this->alias = $tablename;
         }
+        $tablename .= ' ' . $this->alias . $suffix;
         return $tablename;
     }
 
@@ -168,29 +169,32 @@ trait Dao {
      *
      * @param  array   $config Données du select
      * @param  boolean $debug
-     * @return mixed
+     * @return array
      */
     public function select(array $config, $debug = false) {
+        if (!isset($config['from'])) {
+            $config['from'] = $this->t();
+        }
         return $this->query->select($config, $debug);
     }
 
     /**
      * Requête de suppression d'un ou plusieurs records
      *
-     * @param array|int $userConfig
-     * @return mixed
+     * @param array|int $config
+     * @return int Number of deleted records
      */
-    public function delete($userConfig) {
-        $config = array(
+    public function delete($config) {
+        $query_config = array(
             'from' => $this->t()
         );
 
-        if (!is_array($userConfig)) {
-            $userConfig = array('where' => array('id' => $userConfig));
+        if (!is_array($config)) {
+            $config = array('where' => array('id' => $config));
         }
-        $config = array_merge_recursive($userConfig, $config);
+        $query_config = array_merge_recursive($config, $query_config);
 
-        return $this->query->delete($config);
+        return $this->query->delete($query_config);
     }
 
     /**

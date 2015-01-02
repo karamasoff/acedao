@@ -13,7 +13,8 @@ class Database {
         'host' => 'localhost',
         'dbname' => '',
         'user' => 'root',
-        'pass' => ''
+        'pass' => '',
+        'encoding' => false
     );
 
 
@@ -30,7 +31,10 @@ class Database {
         if (!$this->config['adapter'] || !$this->config['host'] || !$this->config['dbname'] || !$this->config['user']) {
             throw new Exception("Missing config parameters");
         }
-        $this->initDriver();
+
+        if (isset($config['autoconnect']) && $config['autoconnect']) {
+            $this->initDriver();
+        }
     }
 
     /**
@@ -109,6 +113,10 @@ class Database {
         try {
             $this->dblol = new \PDO($this->config['adapter'] . ':host=' . $this->config['host'] . ';dbname=' . $this->config['dbname'], $this->config['user'], $this->config['pass']);
             $this->dblol->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+            if ($this->config['encoding']) {
+                $this->execute("SET NAMES '" . $this->config['encoding'] . "';");
+            }
         } catch (Exception $e) {
             throw new Exception('Could not connect to database. Message: ' . $e->getMessage());
         }

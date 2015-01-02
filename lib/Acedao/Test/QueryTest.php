@@ -23,21 +23,10 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 
 	public function setUp() {
 
-		$container = new Container(array(
-            'mode' => 'strict',
-            'namespace' => 'Acedao\Test\Mock',
-            'tables' => array(
-                'Car' => 'car',
-                'Equipment' => 'equipment',
-                'Car\Equipment' => 'car_equipment',
-                'Car\Category' => 'car_category',
-                'Buyer' => 'buyer',
-                'Order' => 'order'
-            )
-        ));
+		global $container;
 
 		$this->container = $container;
-		$this->query = $this->container['query'];
+		$this->query = $this->container->get('Acedao\Query');
 
         // initialize some values
 		$this->baseQuery();
@@ -144,7 +133,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
      * @dataProvider providerRetrieveFilter
      */
     public function testRetrieveFilter($type, $name, $expected) {
-        $queriable = $this->container['Car'];
+        $queriable = $this->container->get('acedao.tables')['car'];
         $result = $this->query->retrieveFilter($queriable, $type, $name);
         $this->assertEquals($expected, $result);
     }
@@ -516,7 +505,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
         ));
         list($parts, $params) = $this->query->prepareSelect();
 
-        $this->assertEquals($parts['from'], "`order` o");
+        $this->assertEquals("`order` o", $parts['from']);
     }
 
     public function testEscapeTableNameInJoinClause() {
@@ -528,7 +517,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
         ));
         list($parts, $params) = $this->query->prepareSelect();
 
-        $this->assertEquals($parts['leftjoin'][0], "LEFT JOIN `order` o ON c.id = o.car_id");
+        $this->assertEquals("LEFT JOIN `order` o ON c.id = o.car_id", $parts['leftjoin'][0]);
     }
 
     /**

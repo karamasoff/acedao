@@ -11,7 +11,9 @@ class Query {
     private $db;
     private $dependencies = [];
 
-    private $config;
+    private $config = [
+        'mode' => 'production'
+    ];
 
     private $queryConfig;
 
@@ -26,7 +28,7 @@ class Query {
      * @param array $config
      * @param array $tables
      */
-    public function __construct(Database $db, array $config, array $tables) {
+    public function __construct(Database $db, array $config = [], array $tables = []) {
         $this->setDb($db);
         $this->setConfig($config);
         $this->dependencies = $tables;
@@ -37,7 +39,7 @@ class Query {
     }
 
     public function setConfig(array $config) {
-        $this->config = $config;
+        $this->config = array_merge($this->config, $config);
     }
 
     public function setDb(Database $db) {

@@ -14,7 +14,8 @@ class Database {
         'dbname' => '',
         'user' => 'root',
         'pass' => '',
-        'encoding' => false
+        'encoding' => false,
+        'autoconnect' => true
     );
 
 
@@ -28,11 +29,11 @@ class Database {
      */
     public function __construct(array $config = []) {
         $this->config = array_merge($this->config, $config);
-        if (!$this->config['adapter'] || !$this->config['host'] || !$this->config['dbname'] || !$this->config['user']) {
-            throw new Exception("Missing config parameters");
-        }
 
         if (isset($config['autoconnect']) && $config['autoconnect']) {
+            if (!$this->config['adapter'] || !$this->config['host'] || !$this->config['dbname'] || !$this->config['user']) {
+                throw new Exception("Missing config parameters");
+            }
             $this->initDriver();
         }
     }

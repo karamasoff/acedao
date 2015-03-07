@@ -595,8 +595,11 @@ class Query {
 
         // if keys were provided in the option array, we test these keys
         // against the sql part provided.
-        $options_keys = array_keys($options);
-        if (!is_int($options_keys[0])) {
+        if ($options !== array_values($options)) {
+            // if there are real keys, we have to format them before going on.
+            $options = $this->formatQueryParamsKeys($options);
+            $options_keys = array_keys($options);
+
             $result_preg_compare = array_flip($result_preg);
             $compare = array_intersect_key($options, $result_preg_compare);
             if (count($compare) != count($result_preg)) {

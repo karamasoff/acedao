@@ -181,6 +181,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 			array(array(), array()),
 			array(array(2, 3, 4), array(':0' => 2, ':1' => 3, ':2' => 4)),
 			array(array('id' => 2, ':blu' => 'adjeu'), array(':id' => 2, ':blu' => 'adjeu')),
+			array(array('status1' => 'new', 'status2' => 'cancelled'), array(':status1' => 'new', ':status2' => 'cancelled')),
 		);
 	}
 
@@ -430,6 +431,11 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
                 array(':rav' => 'bliblablouu', ':zend' => '2013-12-31', ':start' => '2013-12-01'),
                 array(':start' => '2013-12-01', ':zend' => '2013-12-31')
             ), // bon paramètres fournis, mais avec d'autres mauvais ET un ordre qui pourrait poser problème
+            array(
+                "[o.status NOT IN (:status1, :status2)",
+                array('status1' => 'new', 'status2' => 'cancelled'),
+                array(':status1' => 'new', ':status2' => 'cancelled')
+            ), // paramètres fournis sans les ":" avant.
 		);
 	}
 

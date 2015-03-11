@@ -160,7 +160,12 @@ trait Dao {
             print_r($filtered_data);
             echo '</pre>';
         }
-        return $this->query->save($this->t(), $filtered_data, $debug);
+
+        // Check if there is still some data to save...
+        if (array_key_exists('id', $filtered_data) && count($filtered_data) > 1 || !array_key_exists('id', $filtered_data) && count($filtered_data) > 0) {
+            return $this->query->save($this->t(), $filtered_data, $debug);
+        }
+        return true;
     }
 
     /**

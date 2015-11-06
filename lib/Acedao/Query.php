@@ -589,23 +589,23 @@ class Query {
             );
 
             // si la valeur fournie au filtre est de type [alias].[champ], on ne la considérera pas comme une valeur, mais comme une relation.
-            $tab_value = explode('.', $value);
-            if (count($tab_value) == 2) {
-                $potential_alias = $tab_value[0];
-                $potential_fieldname = $tab_value[1];
+            if ($value && !is_array($value)) {
+                $tab_value = explode('.', $value);
+                if (count($tab_value) == 2) {
+                    $potential_alias = $tab_value[0];
+                    $potential_fieldname = $tab_value[1];
 
-                $tablename = $this->getTableNameFromAlias($potential_alias);
+                    $tablename = $this->getTableNameFromAlias($potential_alias);
 
-                if ($tablename) {
-                    $table = $this->getDependency($tablename);
-                    if (in_array($potential_fieldname, $table->getAllowedFields())) {
-                        $query_part = preg_replace('/(\:\w+)/', $value, $query_part);
+                    if ($tablename) {
+                        $table = $this->getDependency($tablename);
+                        if (in_array($potential_fieldname, $table->getAllowedFields())) {
+                            $query_part = preg_replace('/(\:\w+)/', $value, $query_part);
+                        }
                     }
                 }
             }
         }
-
-        echo implode(' ' . trim($connector) . ' ', $filter);
 
         return implode(' ' . trim($connector) . ' ', $filter);
     }

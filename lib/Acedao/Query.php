@@ -461,21 +461,7 @@ class Query {
         // sur un alias (probablement d'une autre table).
         if (count($filter_array) > 0) {
             $alias = array_pop($filter_array);
-            if ($alias != $data['base']['alias']) {
-                $path = $this->getPathAlias($alias);
-                if (!$path) {
-                    throw new Exception(sprintf("Alias [%s] does not exist. Can't go on.", $alias));
-                }
-                $tablename = array_pop($path);
-            } else {
-                $tablename = $data['base']['table'];
-            }
-
-            // si $tablename est en fait un nom de relation, il faut retrouver le vrai nom
-            // de la table.
-            if (isset($this->relationTableNames[$tablename])) {
-                $tablename = $this->relationTableNames[$tablename];
-            }
+            $tablename = $this->getTableNameFromAlias($data, $alias);
 
             // si $filter_array est vide, c'est qu'on appelle un filtre sur la table
             // de base de la requête.
@@ -490,16 +476,25 @@ class Query {
     /**
      * Récupération du nom de la table correspondant à l'alias donné
      *
+     * @param array $data
      * @param string $alias
+     * @param bool $strict
      * @return string
      * @throws Exception
      */
-    public function getTableNameFromAlias($alias) {
-        $path = $this->getPathAlias($alias);
-        if (!$path) {
-            throw new Exception(sprintf("Alias [%s] does not exist. Can't go on.", $alias));
+    public function getTableNameFromAlias($data, $alias, $strict = true) {
+        if ($alias == $data['base']['alias']) {
+            $tablename = $data['base']['table'];
+        } else {
+            $path = $this->getPathAlias($alias);
+            if (!$path) {
+                if ($strict) {
+                    throw new Exception(sprintf("Alias [%s] does not exist. Can't go on.", $alias));
+                }
+                return false;
+            }
+            $tablename = array_pop($path);
         }
-        $tablename = array_pop($path);
 
         // si $tablename est en fait un nom de relation, il faut retrouver le vrai nom
         // de la table.
@@ -595,7 +590,7 @@ class Query {
                     $potential_alias = $tab_value[0];
                     $potential_fieldname = $tab_value[1];
 
-                    $tablename = $this->getTableNameFromAlias($potential_alias);
+                    $tablename = $this->getTableNameFromAlias($data, $potential_alias, false);
 
                     if ($tablename) {
                         $table = $this->getDependency($tablename);

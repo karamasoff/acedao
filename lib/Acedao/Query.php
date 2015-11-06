@@ -138,7 +138,7 @@ class Query {
     public function initDatas() {
         $data = array(
             'flataliases' => array(
-                $this->queryConfig['table'] => $this->queryConfig['alias']
+                $this->queryConfig['table'] => [$this->queryConfig['alias']]
             ),
             'base' => array(
                 'table' => $this->queryConfig['table'],
@@ -318,7 +318,7 @@ class Query {
 
         // initialisation du tableau de données de la query
         $data = array(
-            'flataliases' => array($config['table'] => $config['alias']),
+            'flataliases' => array($config['table'] => [$config['alias']]),
             'base' => array(
                 'table' => $config['table'],
                 'alias' => $config['alias']
@@ -488,6 +488,29 @@ class Query {
     }
 
     /**
+     * Récupération du nom de la table correspondant à l'alias donné
+     *
+     * @param string $alias
+     * @return string
+     * @throws Exception
+     */
+    public function getTableNameFromAlias($alias) {
+        $path = $this->getPathAlias($alias);
+        if (!$path) {
+            throw new Exception(sprintf("Alias [%s] does not exist. Can't go on.", $alias));
+        }
+        $tablename = array_pop($path);
+
+        // si $tablename est en fait un nom de relation, il faut retrouver le vrai nom
+        // de la table.
+        if (isset($this->relationTableNames[$tablename])) {
+            $tablename = $this->relationTableNames[$tablename];
+        }
+
+        return $tablename;
+    }
+
+    /**
      * Récupération de la config du filtre
      *
      * @param Queriable $queriable
@@ -529,16 +552,18 @@ class Query {
      *
      * @param array $data
      * @param string $filtername
-     * @param array $options
+     * @param mixed $value
      * @param string $connector
      * @return string
      * @throws Exception
      */
-    public function getConditionString($data, $filtername, $options = null, $connector = 'AND') {
+    public function getConditionString($data, $filtername, $value = null, $connector = 'AND') {
 
-        if ($filtername === 'or' && is_array($options)) {
+        // filtre spécial pour mettre des OR dans une condition
+        // la valeur du filtre sera un tableau avec d'autres filtres.
+        if ($filtername === 'or' && is_array($value)) {
             $subfilters = array();
-            foreach ($options as $subfilter => $suboptions) {
+            foreach ($value as $subfilter => $suboptions) {
                 $subfilters[] = $this->getConditionString($data, $subfilter, $suboptions);
             }
             return '(' . implode(' OR ', $subfilters) . ')';
@@ -562,7 +587,25 @@ class Query {
                 array($alias, $alias),
                 $query_part
             );
+
+            // si la valeur fournie au filtre est de type [alias].[champ], on ne la considérera pas comme une valeur, mais comme une relation.
+            $tab_value = explode('.', $value);
+            if (count($tab_value) == 2) {
+                $potential_alias = $tab_value[0];
+                $potential_fieldname = $tab_value[1];
+
+                $tablename = $this->getTableNameFromAlias($potential_alias);
+
+                if ($tablename) {
+                    $table = $this->getDependency($tablename);
+                    if (in_array($potential_fieldname, $table->getAllowedFields())) {
+                        $query_part = preg_replace('/(\:\w+)/', $value, $query_part);
+                    }
+                }
+            }
         }
+
+        echo implode(' ' . trim($connector) . ' ', $filter);
 
         return implode(' ' . trim($connector) . ' ', $filter);
     }
@@ -646,9 +689,7 @@ class Query {
 
         // remplacement des alias sur les clause order by
         $aliases = $data['flataliases'][$tablename];
-        if (!is_array($aliases)) {
-            $aliases = array($aliases);
-        }
+
         // s'il y a plusieurs alias pour la même table, on devrait avoir défini un mapping dans la config de la query.
         // sinon, c'est la merde -> exception.
         if (count($aliases) > 1) {

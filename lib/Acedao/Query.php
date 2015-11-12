@@ -241,10 +241,17 @@ class Query {
      * Convertit les parties de requête en requête.
      *
      * @param array $parts
+     * @param array $config
      * @return string
      */
-    public function prepareSelectSql($parts) {
-        $sql = sprintf('SELECT %1$s FROM %2$s', implode(', ', $parts['select']), $parts['from']);
+    public function prepareSelectSql($parts, $config) {
+        $fields = implode(', ', $parts['select']);
+
+        // distinct ?
+        if (isset($config['distinct']) && $config['distinct']) {
+            $fields = 'DISTINCT ' . $fields;
+        }
+        $sql = sprintf('SELECT %1$s FROM %2$s', $fields, $parts['from']);
         if (count($parts['leftjoin']) > 0)
             $sql .= ' ' . implode(' ', $parts['leftjoin']);
         if (count($parts['innerjoin']) > 0)
@@ -270,7 +277,7 @@ class Query {
         list($parts, $params, $alias) = $this->prepareSelect();
 
         // construction de la requête SQL
-        $sql = $this->prepareSelectSql($parts);
+        $sql = $this->prepareSelectSql($parts, $config);
 
 
         if ($debug) {

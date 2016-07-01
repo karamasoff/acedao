@@ -835,7 +835,8 @@ class Query {
      * @return array
      */
     public function defineSelectedFields(array $exclusiveOptions, $defaultFields) {
-        $add_fields = array();
+        $add_fields = [];
+        $omit_fields = [];
         foreach ($exclusiveOptions as $options) {
             // si on trouve une clé 'select', on prend ces champs et éventuellement, on y ajoute les champs mis de côté
             // par le tableau d'options précédent (plus prioritaire).
@@ -856,11 +857,21 @@ class Query {
                 }
                 $add_fields = array_merge($add_fields, $options['addselect']);
             }
+
+            // si on trouve une clé 'omit', on garde ces champs de côté pour les retrancher de la liste de champ explicitement sélectionnée
+            if (isset($options['omit']) && $options['omit']) {
+                if (!is_array($options['omit'])) {
+                    $options['omit'] = array($options['omit']);
+                }
+                $omit_fields = array_merge($omit_fields, $options['omit']);
+            }
         }
 
         // si on est encore là, c'est qu'aucun des tableaux d'options prioritaire n'avait de select explicite.
-        // on retourne donc les champs par défaut auxquels on ajoute les éventuels champs supplémentaires demandés.
+        // on retourne donc les champs par défaut auxquels on ajoute les éventuels champs supplémentaires demandés,
+        // et auquel on retire les champ éventuellement à omettre.
         $fields = array_merge($defaultFields, $add_fields);
+        $fields = array_diff($fields, $omit_fields);
         if (!in_array('id', $fields))
             array_unshift($fields, 'id');
         return $fields;

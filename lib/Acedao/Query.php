@@ -442,10 +442,14 @@ class Query {
 
 
             // fusion des records
-            if (!isset($formatted[$record['id']])) {
-                $formatted[$record['id']] = $record;
+            if (isset($record['id'])) {
+                if (!isset($formatted[$record['id']])) {
+                    $formatted[$record['id']] = $record;
+                } else {
+                    $formatted[$record['id']] = $this->fusionRecords($formatted[$record['id']], $record);
+                }
             } else {
-                $formatted[$record['id']] = $this->fusionRecords($formatted[$record['id']], $record);
+                $formatted[] = $record;
             }
         }
 

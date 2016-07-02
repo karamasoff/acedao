@@ -840,13 +840,16 @@ class Query {
         foreach ($exclusiveOptions as $options) {
             // si on trouve une clé 'select', on prend ces champs et éventuellement, on y ajoute les champs mis de côté
             // par le tableau d'options précédent (plus prioritaire).
-            if (isset($options['select']) && $options['select']) {
+            if (isset($options['select'])) {
+                if (!$options['select']) {
+                    $options['select'] = [];
+                }
+
                 if (!is_array($options['select'])) {
                     $options['select'] = array($options['select']);
                 }
+
                 $fields = array_merge($options['select'], $add_fields);
-                if (!in_array('id', $fields))
-                    array_unshift($fields, 'id');
                 return $fields;
             }
 
@@ -872,8 +875,7 @@ class Query {
         // et auquel on retire les champ éventuellement à omettre.
         $fields = array_merge($defaultFields, $add_fields);
         $fields = array_diff($fields, $omit_fields);
-        if (!in_array('id', $fields))
-            array_unshift($fields, 'id');
+
         return $fields;
     }
 
@@ -977,8 +979,6 @@ class Query {
             // add sql code
             $leftjoin_str[] = sprintf('LEFT JOIN %s ON %s', $filter_table, implode(' AND ', $conditions));
             $data['parts']['leftjoin'] = array_merge($data['parts']['leftjoin'], $leftjoin_str);
-            $data['parts']['select'][] = $local_alias . '.id';
-            $data['parts']['select'][] = $joined_alias . '.id';
         }
 
 

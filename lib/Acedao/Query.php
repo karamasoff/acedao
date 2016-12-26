@@ -879,6 +879,7 @@ class Query {
         // et auquel on retire les champ éventuellement à omettre.
         $fields = array_merge($defaultFields, $add_fields);
         $fields = array_diff($fields, $omit_fields);
+        $fields = array_values($fields); // reset keys
 
         return $fields;
     }

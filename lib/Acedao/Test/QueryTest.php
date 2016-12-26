@@ -117,6 +117,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
             array(array('table' => 'car'), array('name', 'brand', 'model', 'price', 'selldate', 'buyer_id')), // pas de select fourni, prend les valeurs par défaut.
             array(array('addselect' => array('color'), 'table' => 'car'), array('name', 'brand', 'model', 'price', 'selldate', 'buyer_id', 'color')), // ajout d'un champ aux champs par défaut
             array(array('addselect' => 'color', 'table' => 'car'), array('name', 'brand', 'model', 'price', 'selldate', 'buyer_id', 'color')), // pareil, mais sans passer un tableau
+            array(array('omit' => 'model', 'table' => 'car'), array('name', 'brand', 'price', 'selldate', 'buyer_id')), // retire un champ avec 'omit'
 		);
 	}
 

@@ -152,7 +152,8 @@ class Query {
                 'where' => array(),
                 'having' => array(),
                 'groupby' => array(),
-                'orderby' => array()
+                'orderby' => array(),
+                'limit' => null
             ),
             'params' => array()
         );
@@ -234,6 +235,14 @@ class Query {
         // ajout des alias aux champs sélectionnés
         $parts['select'] = $this->nameAliasesSelectedFields($parts['select']);
 
+        // Limit et offset
+        if (isset($config['limit'])) {
+            if (is_array($config['limit']) && count($config['limit']) > 2) {
+                throw new WrongParameterException("Wrong 'limit' parameter provided. It should be an integer, a string or an array with max 2 elements.");
+            }
+            $parts['limit'] = is_array($config['limit']) ? implode(',', $config['limit']) : $config['limit'];
+        }
+
         return array($parts, $params, $this->queryConfig['alias']);
     }
 
@@ -260,6 +269,9 @@ class Query {
             $sql .= ' WHERE ' . implode(' AND ', $parts['where']);
         if (count($parts['orderby']) > 0)
             $sql .= ' ORDER BY ' . implode(', ', $parts['orderby']);
+        if ($parts['limit']) {
+            $sql .= ' LIMIT ' . $parts['limit'];
+        }
 
         return $sql;
     }
@@ -879,6 +891,7 @@ class Query {
         // et auquel on retire les champ éventuellement à omettre.
         $fields = array_merge($defaultFields, $add_fields);
         $fields = array_diff($fields, $omit_fields);
+        $fields = array_values($fields); // reset keys
 
         return $fields;
     }

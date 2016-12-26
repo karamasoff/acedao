@@ -86,13 +86,6 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 		);
 	}
 
-
-	public function testGetSelectedFieldsDefaultContainsId() {
-		$this->assertContains('id', $this->query->getSelectedFields(array(
-			'table' => 'car' // don't pass the 'select' key...
-		)));
-	}
-
 	/**
 	 * @param array $initialConfig
 	 * @param array $expected
@@ -121,10 +114,10 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
 		return array(
 			array(array('select' => array('id', 'name'), 'table' => 'car'), array('id', 'name')),
 			array(array('select' => array('id', 'name'), 'table' => 'buyer'), array('id', 'name')), // pas besoin de la table si on sait les champs qu'on veut...
-            array(array('table' => 'car'), array('id', 'name', 'brand', 'model', 'price', 'selldate', 'buyer_id')), // pas de select fourni, prend les valeurs par défaut.
-            array(array('addselect' => array('color'), 'table' => 'car'), array('id', 'name', 'brand', 'model', 'price', 'selldate', 'buyer_id', 'color')), // ajout d'un champ aux champs par défaut
-            array(array('addselect' => 'color', 'table' => 'car'), array('id', 'name', 'brand', 'model', 'price', 'selldate', 'buyer_id', 'color')), // pareil, mais sans passer un tableau
-            array(array('select' => 'name', 'table' => 'car'), array('id', 'name')) // sélection d'un seul champ (l'id est tjs ajouté)
+            array(array('table' => 'car'), array('name', 'brand', 'model', 'price', 'selldate', 'buyer_id')), // pas de select fourni, prend les valeurs par défaut.
+            array(array('addselect' => array('color'), 'table' => 'car'), array('name', 'brand', 'model', 'price', 'selldate', 'buyer_id', 'color')), // ajout d'un champ aux champs par défaut
+            array(array('addselect' => 'color', 'table' => 'car'), array('name', 'brand', 'model', 'price', 'selldate', 'buyer_id', 'color')), // pareil, mais sans passer un tableau
+            array(array('omit' => 'model', 'table' => 'car'), array('name', 'brand', 'price', 'selldate', 'buyer_id')), // retire un champ avec 'omit'
 		);
 	}
 
@@ -581,6 +574,61 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
                 '(e.price >= :from AND e.price <= :to OR e.enabled = true)'
             )
         );
+    }
+
+    public function providerTestFullQuery() {
+        return array(
+            array(
+                array(
+                    'select' => array('name'),
+                    'from' => 'car c',
+                    'limit' => 5 // test de la clause 'limit'
+                ),
+                'SELECT c.name as c__name FROM car c LIMIT 5'
+            ),
+            array(
+                array(
+                    'select' => array('name'),
+                    'from' => 'car c',
+                    'limit' => array(30, 5) // test de la clause 'limit'
+                ),
+                'SELECT c.name as c__name FROM car c LIMIT 30,5'
+            )
+        );
+    }
+
+    /**
+     * @param $config
+     * @param $expectedString
+     *
+     * @dataProvider providerTestFullQuery
+     */
+    public function testFullQuery($config, $expectedString) {
+        $this->query->prepareConfig($config);
+        list($parts) = $this->query->prepareSelect();
+
+        // construction de la requête SQL
+        $sql = $this->query->prepareSelectSql($parts, $config);
+        $this->assertEquals($sql, $expectedString);
+    }
+
+    public function testLimitBadFormatException() {
+        $config = array(
+            'select' => array('name'),
+            'from' => 'car c',
+            'limit' => array(30, 5, 3) // test de la clause 'limit'
+        );
+        try {
+            $this->query->prepareConfig($config);
+            list($parts) = $this->query->prepareSelect();
+
+            // construction de la requête SQL
+            $this->query->prepareSelectSql($parts, $config);
+        } catch (Exception\WrongParameterException $e) {
+            return;
+        }
+
+        $this->fail("WrongParameterException should have been raised.");
     }
 
 

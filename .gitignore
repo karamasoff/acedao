@@ -1,3 +1,6 @@
 vendor
 *.iml
 _site
+.vagrant
+VagrantFile
+vagrant-bootstrap.sh

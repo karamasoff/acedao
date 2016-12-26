@@ -576,6 +576,61 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
         );
     }
 
+    public function providerTestFullQuery() {
+        return array(
+            array(
+                array(
+                    'select' => array('name'),
+                    'from' => 'car c',
+                    'limit' => 5 // test de la clause 'limit'
+                ),
+                'SELECT c.name as c__name FROM car c LIMIT 5'
+            ),
+            array(
+                array(
+                    'select' => array('name'),
+                    'from' => 'car c',
+                    'limit' => array(30, 5) // test de la clause 'limit'
+                ),
+                'SELECT c.name as c__name FROM car c LIMIT 30,5'
+            )
+        );
+    }
+
+    /**
+     * @param $config
+     * @param $expectedString
+     *
+     * @dataProvider providerTestFullQuery
+     */
+    public function testFullQuery($config, $expectedString) {
+        $this->query->prepareConfig($config);
+        list($parts) = $this->query->prepareSelect();
+
+        // construction de la requête SQL
+        $sql = $this->query->prepareSelectSql($parts, $config);
+        $this->assertEquals($sql, $expectedString);
+    }
+
+    public function testLimitBadFormatException() {
+        $config = array(
+            'select' => array('name'),
+            'from' => 'car c',
+            'limit' => array(30, 5, 3) // test de la clause 'limit'
+        );
+        try {
+            $this->query->prepareConfig($config);
+            list($parts) = $this->query->prepareSelect();
+
+            // construction de la requête SQL
+            $this->query->prepareSelectSql($parts, $config);
+        } catch (Exception\WrongParameterException $e) {
+            return;
+        }
+
+        $this->fail("WrongParameterException should have been raised.");
+    }
+
 
 
 /** ========== setting up the environment =================================== */

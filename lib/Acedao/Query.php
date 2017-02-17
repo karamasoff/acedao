@@ -575,7 +575,7 @@ class Query {
      * @return string
      * @throws Exception
      */
-    public function getConditionString($data, $filtername, $value = null, $connector = 'AND') {
+    public function getConditionString(&$data, $filtername, $value = null, $connector = 'AND') {
 
         // filtre spécial pour mettre des OR dans une condition
         // la valeur du filtre sera un tableau avec d'autres filtres.
@@ -606,19 +606,34 @@ class Query {
                 $query_part
             );
 
-            // si la valeur fournie au filtre est de type [alias].[champ], on ne la considérera pas comme une valeur, mais comme une relation.
-            if ($value && !is_array($value)) {
-                $tab_value = explode('.', $value);
-                if (count($tab_value) == 2) {
-                    $potential_alias = $tab_value[0];
-                    $potential_fieldname = $tab_value[1];
+            if ($value) {
+                // si la valeur est un tableau et qu'il y a un paramètre nommé ":in", on considère que l'égalité se fera sur un IN ou un NOT IN
+                if (is_array($value)) {
+                    if (strstr($query_part, ':in')) {
+                        $params = [];
+                        foreach ($value as $key => $val) {
+                            $params[] = ':gen_param_in' . $key;
+                        }
+                        $query_part = preg_replace('/(\:\w+)/', implode(',', $params), $query_part);
+                        foreach ($value as $key => $val) {
+                            $data['params'][':gen_param_in' . $key] = $val;
+                        }
+                    }
+                } else {
+                    $tab_value = explode('.', $value);
 
-                    $tablename = $this->getTableNameFromAlias($data, $potential_alias, false);
+                    // si la valeur fournie au filtre est de type [alias].[champ], on ne la considérera pas comme une valeur, mais comme une relation.
+                    if (count($tab_value) == 2) {
+                        $potential_alias = $tab_value[0];
+                        $potential_fieldname = $tab_value[1];
 
-                    if ($tablename) {
-                        $table = $this->getDependency($tablename);
-                        if (in_array($potential_fieldname, $table->getAllowedFields())) {
-                            $query_part = preg_replace('/(\:\w+)/', $value, $query_part);
+                        $tablename = $this->getTableNameFromAlias($data, $potential_alias, false);
+
+                        if ($tablename) {
+                            $table = $this->getDependency($tablename);
+                            if (in_array($potential_fieldname, $table->getAllowedFields())) {
+                                $query_part = preg_replace('/(\:\w+)/', $value, $query_part);
+                            }
                         }
                     }
                 }

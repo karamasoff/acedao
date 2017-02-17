@@ -572,6 +572,18 @@ class QueryTest extends \PHPUnit_Framework_TestCase {
                 ),
                 'and',
                 '(e.price >= :from AND e.price <= :to OR e.enabled = true)'
+            ),
+            array(
+                array(
+                    'base' => array(
+                        'alias' => 'c',
+                        'table' => 'car'
+                    )
+                ),
+                'c.colorIn',
+                array('red', 'blue'),
+                'and',
+                'c.color IN (:gen_param_in0,:gen_param_in1)'
             )
         );
     }

@@ -59,6 +59,9 @@ class Car implements Queriable {
                 ),
                 'color' => array(
                     '[this].color = :color'
+                ),
+                'colorIn' => array(
+                    '[this].color IN (:in)'
                 )
             ),
             'orderby' => array(

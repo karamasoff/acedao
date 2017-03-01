@@ -24,6 +24,10 @@ class Query {
     public function __construct(Container $c) {
         $this->container = $c;
         $this->classnames = array_flip($c['config']['tables']);
+
+        if (!isset($this->container['config']['alias_separator']) || !$this->container['config']['alias_separator']) {
+            $this->container['config']['alias_separator'] = '__';
+        }
     }
 
     public function setAliasesReferences($refs) {
@@ -44,6 +48,13 @@ class Query {
 
     public function getAliasesReferences() {
         return $this->aliasesReferences;
+    }
+
+    public function getAliasSeparator() {
+        if (isset($this->container['config']['alias_separator']) && $this->container['config']['alias_separator']) {
+            return $this->container['config']['alias_separator'];
+        }
+        return '__';
     }
 
     /**
@@ -130,7 +141,7 @@ class Query {
      */
     public function nameAliasesSelectedFields($fields) {
         return array_map(function ($field) {
-            $alias = str_replace('.', '__', $field);
+            $alias = str_replace('.', $this->getAliasSeparator(), $field);
             return $field . ' as ' . $alias;
         }, $fields);
     }
@@ -410,7 +421,7 @@ class Query {
             $relations = array();
             $path_exclude = array();
             foreach ($line as $fieldname => $value) {
-                $t = explode('__', $fieldname);
+                $t = explode($this->getAliasSeparator(), $fieldname);
                 if ($t[0] == $alias) {
                     $record[$t[1]] = $value;
                 } else {

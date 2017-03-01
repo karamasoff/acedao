@@ -24,10 +24,6 @@ class Query {
     public function __construct(Container $c) {
         $this->container = $c;
         $this->classnames = array_flip($c['config']['tables']);
-
-        if (!isset($this->container['config']['alias_separator']) || !$this->container['config']['alias_separator']) {
-            $this->container['config']['alias_separator'] = '__';
-        }
     }
 
     public function setAliasesReferences($refs) {

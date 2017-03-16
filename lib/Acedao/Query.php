@@ -566,7 +566,7 @@ class Query {
         $data['parts']['where'][] = $where_str;
 
         // traitement des paramètres
-        if (isset($options) && $options) {
+        if (isset($options) && $options !== null) {
             $this_condition_parameters = $this->mapFilterParametersNames($where_str, $options);
             $data['params'] = array_merge($data['params'], $this_condition_parameters);
         }
